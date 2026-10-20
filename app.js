@@ -13,7 +13,7 @@
   const PALETTE = ['--brand', '--s-referral', '--s-offer', '--s-ready', '--s-rejected', '--brand-2', '--s-interview', '--s-applied'];
 
   let token = null, tokenExpiry = 0, tokenClient = null, pendingResolve = null;
-  let jobs = [], runs = [], lastLoaded = null, timer = null, usingSample = false, realData = null;
+  let drafts = [], jobs = [], runs = [], lastLoaded = null, timer = null, usingSample = false, realData = null;
   let sortKey = 'Match Score', sortDir = -1, statusFilter = '';
 
   const todayPT = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
@@ -70,7 +70,7 @@
   $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: '' }); } });
   $('signout').addEventListener('click', () => {
     if (token) google.accounts.oauth2.revoke(token, () => {});
-    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; usingSample = false; realData = null;
+    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; drafts = []; usingSample = false; realData = null;
     showGate('signin');
   });
   function ensureToken() {
@@ -90,18 +90,22 @@
     $('app-err').textContent = '';
     setUpdated('Refreshing…');
     try {
-      const [sheet, drive] = await Promise.all([
+      const [sheet, drive, outreach] = await Promise.all([
         api(`https://sheets.googleapis.com/v4/spreadsheets/${C.TRACKER_SHEET_ID}/values/${encodeURIComponent(C.TRACKER_RANGE)}`),
         api('https://www.googleapis.com/drive/v3/files?' + new URLSearchParams({
           q: `'${C.RUN_LOGS_FOLDER_ID}' in parents and mimeType = 'application/vnd.google-apps.document' and name contains 'Run ' and trashed = false`,
           orderBy: 'createdTime desc', pageSize: '8', fields: 'files(name,createdTime,webViewLink)',
         })),
+        // The Outreach tab may not exist on an older tracker; treat that as no drafts.
+        api(`https://sheets.googleapis.com/v4/spreadsheets/${C.TRACKER_SHEET_ID}/values/${encodeURIComponent(C.OUTREACH_RANGE || "'Outreach'!A1:M2000")}`).catch(() => ({ values: [] })),
       ]);
+      const toRows = (vals) => { const h = vals[0] || []; return vals.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(h.map((c, i) => [c, r[i] ?? '']))); };
+      const draftRows = toRows(outreach.values || []);
       const values = sheet.values || [];
       const cols = values[0] || [];
       const rows = values.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])));
-      realData = { jobs: rows, runs: (drive.files || []).map((f) => ({ title: f.name, created: f.createdTime, link: f.webViewLink })) };
-      if (!usingSample || rows.length) { usingSample = false; jobs = realData.jobs; runs = realData.runs; }
+      realData = { jobs: rows, drafts: draftRows, runs: (drive.files || []).map((f) => ({ title: f.name, created: f.createdTime, link: f.webViewLink })) };
+      if (!usingSample || rows.length) { usingSample = false; jobs = realData.jobs; runs = realData.runs; drafts = realData.drafts; }
       lastLoaded = new Date();
       if (!$('app').hidden) render();
       setUpdated();
@@ -152,12 +156,22 @@
         'Match Score': String(70 + ((i * 13) % 27)), 'Sponsorship Signal': spons[i % spons.length], 'Status': s,
         'Date Applied': ['Applied', 'Referral requested', 'Interviewing', 'Rejected', 'Offer'].includes(s) ? ad.toISOString().slice(0, 10) : '' });
     }
-    return { jobs: out, runs: [0, 1, 2].map((k) => ({ title: `Run ${new Date(now - k * 43200000).toISOString().slice(0, 10)} ${k % 2 ? '5:43 PM' : '7:43 AM'} PT`, created: '', link: '' })) };
+    const people = [['Maya Chen', 'Senior Software Engineer', 'Your connection', 'Message'], ['Jordan Lee', 'Technical Recruiter', 'Recruiter', 'InMail'], ['Sam Patel', 'Engineering Manager', 'Hiring manager', 'Connection note']];
+    const sd = [];
+    out.filter((j) => j['Status'] === 'Ready to apply').slice(0, 4).forEach((j, ji) => {
+      people.slice(0, ji % 2 ? 2 : 3).forEach(([person, title, rel, type], pi) => {
+        const f = { type: type === 'InMail' ? 'inmail' : 'note', name: person, company: j['Company'], role: j['Job Title'], recipient: rel === 'Recruiter' ? 'recruiter' : rel === 'Hiring manager' ? 'manager' : 'connection', goal: 'referral' };
+        const v = window.JD_OUTREACH.draft(f).variants[0];
+        sd.push({ 'Date Drafted': j['Date Found'], 'Company': j['Company'], 'Job Title': j['Job Title'], 'Job Link': '', 'Person': person.replace(' ', ji ? ' ' + 'ABCDEFGH'[ji] + '. ' : ' '), 'Person Title': title,
+          'Relationship': rel, 'Found Via': rel === 'Your connection' ? 'LinkedIn Connections.csv' : 'Web search', 'Profile URL': '', 'Message Type': type, 'Subject': v.subject, 'Message': v.body, 'Draft ID': `sample|${ji}|${pi}` });
+      });
+    });
+    return { jobs: out, drafts: sd, runs: [0, 1, 2].map((k) => ({ title: `Run ${new Date(now - k * 43200000).toISOString().slice(0, 10)} ${k % 2 ? '5:43 PM' : '7:43 AM'} PT`, created: '', link: '' })) };
   }
   function setSample(on) {
     usingSample = on;
-    const d = on ? sampleData() : (realData || { jobs: [], runs: [] });
-    jobs = d.jobs; runs = d.runs; statusFilter = ''; $('q').value = '';
+    const d = on ? sampleData() : (realData || { jobs: [], runs: [], drafts: [] });
+    jobs = d.jobs; runs = d.runs; drafts = d.drafts || []; statusFilter = ''; $('q').value = '';
     render();
   }
   $('sample-off').addEventListener('click', () => setSample(false));
@@ -503,6 +517,7 @@
     renderJobs();
     renderRuns();
     renderOutreachStatus();
+    renderAgentDrafts();
   }
 
   // ---------- LinkedIn outreach ----------
@@ -527,8 +542,8 @@
     box.replaceChildren(); const list = el('div', 'log');
     for (const x of log.slice(0, 25)) {
       const row = el('div', 'log-row');
-      const ic = el('span', 'kpi-icon'); ic.style.setProperty('--k', x.type === 'inmail' ? 'var(--s-referral)' : 'var(--brand)'); ic.append(icon(x.type === 'inmail' ? 'mail' : 'user-plus', 'ic'));
-      const t = el('div'); t.append(el('b', null, `${x.name} · ${x.company}`), el('small', null, `${x.type === 'inmail' ? 'InMail' : 'Connection note'} · ${x.role} · ${fmtDay(x.day)}`));
+      const ic = el('span', 'kpi-icon'); ic.style.setProperty('--k', x.type === 'inmail' ? 'var(--s-referral)' : x.type === 'message' ? 'var(--s-offer)' : 'var(--brand)'); ic.append(icon(x.type === 'inmail' ? 'mail' : x.type === 'message' ? 'message' : 'user-plus', 'ic'));
+      const t = el('div'); t.append(el('b', null, `${x.name} · ${x.company}`), el('small', null, `${TYPE_LABEL[x.type] || 'Message'}${x.source === 'agent' ? ' · agent draft' : ''} · ${x.role} · ${fmtDay(x.day)}`));
       const open = btn('Profile', x.profile, 'external');
       row.append(ic, t, open); list.append(row);
     }
@@ -633,6 +648,109 @@
       card.append(acts); box.append(card);
     });
   }
+
+  // ---------- Agent drafts (from the tracker's Outreach tab) ----------
+  const TYPE_LABEL = { inmail: 'InMail', note: 'Connection note', message: 'Message' };
+  const REL = {
+    'Your connection': { color: 'var(--s-offer)', label: '1st-degree connection', icon: 'users' },
+    'Recruiter': { color: 'var(--s-ready)', label: 'Recruiter', icon: 'briefcase' },
+    'Hiring manager': { color: 'var(--s-interview)', label: 'Hiring manager', icon: 'award' },
+    'Engineer': { color: 'var(--s-applied)', label: 'Engineer on the team', icon: 'zap' },
+  };
+  const relOf = (d) => { const k = String(d['Relationship'] || '').trim(); return REL[k] ? k : (/connection|1st/i.test(k) ? 'Your connection' : /recruit|talent/i.test(k) ? 'Recruiter' : /manager|lead/i.test(k) ? 'Hiring manager' : 'Engineer'); };
+  const typeOf = (d) => { const t = String(d['Message Type'] || '').toLowerCase(); return t.includes('inmail') ? 'inmail' : t.includes('note') || t.includes('connection') ? 'note' : 'message'; };
+  const draftId = (d) => String(d['Draft ID'] || `${d['Company']}|${d['Person']}|${d['Job Link']}`).toLowerCase();
+  const SENT_KEY = 'jd_li_sent';
+  const readSent = () => { try { return JSON.parse(localStorage.getItem(SENT_KEY) || '{}'); } catch (e) { return {}; } };
+  const writeSent = (m) => { try { localStorage.setItem(SENT_KEY, JSON.stringify(m)); } catch (e) {} };
+  let relFilter = '', hideSent = true;
+
+  function renderAgentDrafts() {
+    const box = $('ad-list'), chips = $('ad-chips');
+    const sent = readSent();
+    const counts = { '': drafts.length }; drafts.forEach((d) => { const k = relOf(d); counts[k] = (counts[k] || 0) + 1; });
+    const waiting = drafts.filter((d) => !sent[draftId(d)]).length;
+    $('ad-hint').textContent = drafts.length ? `${fmt(waiting)} waiting to send · ${fmt(drafts.length - waiting)} sent` : 'Drafts the agents write for each job appear here';
+    const nb = $('nav-drafts'); nb.hidden = !waiting; nb.textContent = fmt(waiting); nb.title = waiting + ' outreach drafts waiting';
+    chips.replaceChildren();
+    const mk = (label, value, color) => {
+      const b = el('button', 'chip'); b.type = 'button'; b.style.setProperty('--sc', color); b.setAttribute('aria-pressed', String(relFilter === value));
+      b.append(el('i'), document.createTextNode(label), el('span', 'n', fmt(counts[value] || 0)));
+      b.addEventListener('click', () => { relFilter = relFilter === value ? '' : value; renderAgentDrafts(); });
+      chips.append(b);
+    };
+    mk('All', '', 'var(--muted)');
+    mk('Your connections', 'Your connection', REL['Your connection'].color);
+    mk('Recruiters', 'Recruiter', REL['Recruiter'].color);
+    mk('Hiring managers', 'Hiring manager', REL['Hiring manager'].color);
+    if (counts['Engineer']) mk('Engineers', 'Engineer', REL['Engineer'].color);
+    $('ad-hide-sent').checked = hideSent;
+
+    const list = drafts.filter((d) => (!relFilter || relOf(d) === relFilter) && (!hideSent || !sent[draftId(d)]));
+    if (!drafts.length) return emptyBox(box, 'No agent drafts yet. After each run, the people the agents found for every job show up here, with your 1st-degree connections first.', 'users', usingSample || jobs.length ? null : sampleButton());
+    if (!list.length) return emptyBox(box, relFilter === 'Your connection' && !counts['Your connection'] ? 'No drafts to your connections yet. Upload "LinkedIn Connections.csv" to the Job Agent folder so the agents can find people you know at each company.' : 'Nothing here with these filters.', 'users');
+
+    const groups = new Map();
+    for (const d of list) { const k = `${d['Company']}|${d['Job Title']}|${d['Job Link']}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(d); }
+    const order = ['Your connection', 'Hiring manager', 'Engineer', 'Recruiter'];
+    const sorted = [...groups.values()].sort((a, b) => String(b[0]['Date Drafted']).localeCompare(String(a[0]['Date Drafted'])));
+    box.replaceChildren();
+    for (const g of sorted) {
+      g.sort((a, b) => order.indexOf(relOf(a)) - order.indexOf(relOf(b)));
+      const j = g[0];
+      const grp = el('div', 'ad-group');
+      const head = el('div', 'ad-head');
+      const av = el('span', 'avatar', String(j['Company'] || '?').trim().charAt(0).toUpperCase()); av.style.setProperty('--av', AVATAR[hash(j['Company']) % AVATAR.length]);
+      const ht = el('div'); const u = safeUrl(j['Job Link']);
+      const title = el(u ? 'a' : 'b', 'ad-job', j['Job Title'] || 'Role'); if (u) { title.href = u; title.target = '_blank'; title.rel = 'noopener'; }
+      ht.append(title, el('small', null, `${j['Company']} · drafted ${j['Date Drafted'] ? fmtDay(j['Date Drafted']) : ''} · ${g.length} ${g.length === 1 ? 'person' : 'people'}`));
+      head.append(av, ht); grp.append(head);
+      const cards = el('div', 'ad-cards');
+      for (const d of g) cards.append(draftCard(d, sent));
+      grp.append(cards); box.append(grp);
+    }
+  }
+
+  function draftCard(d, sent) {
+    const id = draftId(d), rel = relOf(d), R = REL[rel], type = typeOf(d), isSent = !!sent[id];
+    const card = el('div', 'ad-card' + (isSent ? ' sent' : '')); card.style.setProperty('--rc', R.color);
+    const top = el('div', 'ad-top');
+    const who = el('div', 'ad-who');
+    who.append(el('b', null, d['Person'] || 'Unknown'), el('small', null, d['Person Title'] || ''));
+    const badges = el('div', 'ad-badges');
+    const b1 = el('span', 'badge rel'); b1.append(icon(R.icon), document.createTextNode(R.label)); badges.append(b1);
+    const b2 = el('span', 'badge'); b2.append(icon(type === 'inmail' ? 'mail' : type === 'note' ? 'user-plus' : 'message'), document.createTextNode(TYPE_LABEL[type])); badges.append(b2);
+    if (isSent) { const b3 = el('span', 'badge done'); b3.append(icon('check'), document.createTextNode('Sent ' + fmtDay(sent[id]))); badges.append(b3); }
+    top.append(who, badges); card.append(top);
+    if (/connections\.csv/i.test(d['Found Via'] || '')) card.append(el('div', 'ad-via', 'From your LinkedIn connections'));
+    let subj = null;
+    if (type === 'inmail' && d['Subject']) { subj = el('input', 'ad-subj'); subj.value = d['Subject']; subj.setAttribute('aria-label', 'Subject'); card.append(subj); }
+    const ta = el('textarea', 'ad-msg'); ta.value = d['Message'] || ''; ta.setAttribute('aria-label', 'Message to ' + (d['Person'] || 'contact'));
+    ta.rows = type === 'note' ? 4 : type === 'inmail' ? 12 : 6; card.append(ta);
+    const L = window.JD_OUTREACH.LIMITS;
+    const count = el('span', 'count');
+    const upd = () => { if (type === 'note') { count.textContent = `${ta.value.length} / ${L.note}`; count.classList.toggle('over', ta.value.length > L.note); } else count.textContent = `${ta.value.length} characters`; };
+    ta.addEventListener('input', upd); upd();
+    const acts = el('div', 'draft-acts');
+    const mk = (label, ic, fn, cls) => { const b = el('button', 'btn sm' + (cls ? ' ' + cls : '')); b.type = 'button'; b.append(icon(ic), document.createTextNode(label)); b.addEventListener('click', () => fn(b)); acts.append(b); return b; };
+    if (subj) mk('Copy subject', 'copy', (b) => copy(subj.value, b));
+    mk('Copy message', 'copy', (b) => copy(ta.value, b), 'primary');
+    const prof = liUrl(String(d['Profile URL'] || '').trim());
+    const open = btn(prof ? 'Open profile' : 'Find on LinkedIn', prof || 'https://www.linkedin.com/search/results/people/?' + new URLSearchParams({ keywords: `${d['Person'] || ''} ${d['Company'] || ''}` }), 'external');
+    acts.append(open);
+    if (!isSent) mk('Mark as sent', 'check', () => {
+      if (type === 'note' && ta.value.length > L.note) { count.classList.add('over'); alert(`This note is over ${L.note} characters. Shorten it before sending.`); return; }
+      if (type === 'inmail' && inmailsToday() >= LI_LIMIT && !confirm(`You've already sent ${LI_LIMIT} InMails today. Mark this one as sent anyway?`)) return;
+      const m = readSent(); m[id] = todayPT(); writeSent(m);
+      const log = readLog(); log.unshift({ day: todayPT(), at: Date.now(), type, name: d['Person'], company: d['Company'], role: d['Job Title'], recipient: rel, profile: prof || '', source: 'agent' });
+      writeLog(log); renderOutreachStatus(); renderAgentDrafts();
+    });
+    else mk('Undo sent', 'refresh', () => { const m = readSent(); delete m[id]; writeSent(m); renderAgentDrafts(); });
+    const foot = el('div', 'ad-foot'); foot.append(acts, count); card.append(foot);
+    if (type === 'inmail' && !isSent && inmailsToday() >= LI_LIMIT) card.append(el('div', 'ad-warn', `Today's ${LI_LIMIT} InMails are used. Send this tomorrow, or draft a connection note above instead.`));
+    return card;
+  }
+  $('ad-hide-sent').addEventListener('change', (e) => { hideSent = e.target.checked; renderAgentDrafts(); });
 
   function prefillOutreach(r) {
     form.reset();

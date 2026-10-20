@@ -251,6 +251,34 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
 .log-row b { color: var(--ink); }
 .log-row small { display: block; color: var(--muted); font-size: 12px; }
 .log-row .kpi-icon { width: 30px; height: 30px; }
+/* Agent drafts */
+.nav-badge.green { background: var(--s-offer); color: #fff; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.toggle input { width: 16px; height: 16px; accent-color: var(--brand); }
+#ad-list { display: grid; gap: 18px; }
+.ad-group { display: grid; gap: 10px; }
+.ad-head { display: flex; align-items: center; gap: 10px; }
+.ad-head small { display: block; color: var(--muted); font-size: 12px; }
+.ad-job { font-weight: 800; color: var(--ink); text-decoration: none; }
+a.ad-job:hover { color: var(--brand); text-decoration: underline; }
+.ad-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.ad-card { position: relative; display: grid; gap: 10px; align-content: start; padding: 14px 14px 14px 18px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--panel); }
+.ad-card::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 0 4px 4px 0; background: var(--rc); }
+.ad-card.sent { opacity: .7; }
+.ad-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.ad-who b { display: block; color: var(--ink); font-weight: 800; }
+.ad-who small { color: var(--muted); font-size: 12px; }
+.ad-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; background: var(--grid); color: var(--text); white-space: nowrap; }
+.badge .ic { width: 12px; height: 12px; }
+.badge.rel { background: color-mix(in srgb, var(--rc) 16%, transparent); color: color-mix(in srgb, var(--rc) 75%, var(--ink)); }
+.badge.done { background: color-mix(in srgb, var(--s-offer) 16%, transparent); color: color-mix(in srgb, var(--s-offer) 75%, var(--ink)); }
+.ad-via { font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--s-offer) 75%, var(--ink)); }
+.ad-subj, .ad-msg { font: inherit; font-size: 13px; color: var(--text); background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; width: 100%; }
+.ad-msg { resize: vertical; line-height: 1.5; }
+.ad-subj:focus, .ad-msg:focus { outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); border-color: var(--brand); background: var(--panel); }
+.ad-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ad-warn { font-size: 12px; font-weight: 600; color: var(--warn); }
 .tip { position: absolute; pointer-events: none; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 6px 10px; font-size: 12px; display: none; white-space: nowrap; }
 .tip .d { color: var(--muted); }
 .tip b { color: var(--ink); }
@@ -363,7 +391,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
       <a href="#/overview" data-page="overview" class="on"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
       <a href="#/analytics" data-page="analytics"><svg class="ic"><use href="#i-bars"/></svg>Analytics</a>
       <a href="#/jobs" data-page="jobs"><svg class="ic"><use href="#i-list"/></svg>All jobs<span class="nav-badge" id="nav-ready" hidden></span></a>
-      <a href="#/linkedin" data-page="linkedin"><svg class="ic"><use href="#i-message"/></svg>LinkedIn outreach</a>
+      <a href="#/linkedin" data-page="linkedin"><svg class="ic"><use href="#i-message"/></svg>LinkedIn outreach<span class="nav-badge green" id="nav-drafts" hidden></span></a>
       <a href="#/files" data-page="files"><svg class="ic"><use href="#i-folder"/></svg>Files and runs</a>
     </nav>
     <div class="nav-sub">Edit</div>
@@ -578,6 +606,15 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
         <a class="btn sm" id="li-profile" target="_blank" rel="noopener"><svg class="ic sm"><use href="#i-external"/></svg>Find on LinkedIn</a>
       </div>
       <div class="drafts" id="li-drafts"></div>
+    </section>
+
+    <section class="w" id="agent-drafts">
+      <div class="w-head">
+        <div class="w-title"><span class="kpi-icon" style="--k: var(--s-offer)"><svg class="ic"><use href="#i-users"/></svg></span><div><h2>Agent drafts</h2><p class="hint" id="ad-hint"></p></div></div>
+        <label class="toggle"><input type="checkbox" id="ad-hide-sent" checked><span>Hide sent</span></label>
+      </div>
+      <div class="chips" id="ad-chips" style="margin-bottom:14px"></div>
+      <div id="ad-list"></div>
     </section>
 
     <section class="w">
