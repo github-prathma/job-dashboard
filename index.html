@@ -6,234 +6,470 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Job Search Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="config.js"></script>
 <style>
 :root {
-  --bg: #f6f7fb; --panel: #ffffff; --fg: #1d2330; --muted: #667085; --line: #e4e7ee; --grid: #eef0f5; --axis: #c9ced8;
-  --c0: #4f6bed; --c1: #e8743b; --c2: #19a979; --c3: #a35bd6; --c4: #d64f8a; --c5: #2fa0c4; --c6: #c9a227; --c7: #7a8a99;
-  --bad: #d64545; --radius: 12px; --sans: "Inter", system-ui, -apple-system, Segoe UI, sans-serif; --serif: "Source Serif 4", Georgia, serif;
-  --shadow: 0 6px 24px rgba(20, 30, 60, .12);
+  --canvas: #f3f5f9; --panel: #ffffff; --ink: #0f1b2d; --text: #1e293b; --muted: #64748b; --line: #e3e8f0; --grid: #eef1f6; --axis: #cbd3df;
+  --side: #0f1b2d; --side-2: #172a44; --side-text: #c7d2e3; --side-muted: #7f8ea6;
+  --brand: #2563eb; --brand-2: #0ea5e9;
+  --s-ready: #f59e0b; --s-applied: #0ea5e9; --s-referral: #8b5cf6; --s-interview: #4f46e5; --s-offer: #10b981; --s-rejected: #f43f5e; --s-skipped: #94a3b8;
+  --good: #059669; --warn: #d97706; --bad: #e11d48;
+  --r-lg: 16px; --r-md: 12px; --r-sm: 8px;
+  --shadow: 0 1px 2px rgba(15, 27, 45, .06), 0 8px 24px -12px rgba(15, 27, 45, .14);
+  --font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #12151c; --panel: #1a1e27; --fg: #e8ebf2; --muted: #98a1b3; --line: #2a303c; --grid: #232834; --axis: #3a4150; --shadow: 0 6px 24px rgba(0,0,0,.4); }
+  :root:not([data-theme="light"]) { --canvas: #0b1422; --panel: #121e30; --ink: #f1f5fb; --text: #dbe3ef; --muted: #8b9ab2; --line: #22324a; --grid: #1a2840; --axis: #34465f; --side: #08101c; --side-2: #12203a; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6); }
 }
-:root[data-theme="dark"] { --bg: #12151c; --panel: #1a1e27; --fg: #e8ebf2; --muted: #98a1b3; --line: #2a303c; --grid: #232834; --axis: #3a4150; --shadow: 0 6px 24px rgba(0,0,0,.4); }
+:root[data-theme="dark"] { --canvas: #0b1422; --panel: #121e30; --ink: #f1f5fb; --text: #dbe3ef; --muted: #8b9ab2; --line: #22324a; --grid: #1a2840; --axis: #34465f; --side: #08101c; --side-2: #12203a; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6); }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.45; }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 20px; }
-.hero { position: relative; overflow: hidden; border-radius: var(--radius); padding: 28px 24px; border: 1px solid var(--line);
-  background: linear-gradient(120deg, color-mix(in srgb, var(--c0) 22%, var(--panel)), color-mix(in srgb, var(--c3) 18%, var(--panel)) 55%, color-mix(in srgb, var(--c2) 18%, var(--panel))); }
-.hero h1 { font-family: var(--serif); font-weight: 400; font-size: 32px; margin: 0; }
-.take { font-size: 16px; margin: 6px 0 0; min-height: 1.4em; }
-.sched { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
-.btn { --b: var(--c0); display: inline-flex; align-items: center; gap: .35em; font: inherit; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; cursor: pointer;
-  text-decoration: none; white-space: nowrap; color: var(--fg); border: 1px solid color-mix(in srgb, var(--b) 45%, transparent); background: color-mix(in srgb, var(--b) 14%, var(--panel)); }
-.btn:hover { background: color-mix(in srgb, var(--b) 26%, var(--panel)); }
-.btn.solid { background: var(--b); border-color: var(--b); color: #fff; }
-.btn.solid:hover { filter: brightness(1.08); }
-.btn.sm { padding: 3px 10px; font-size: 12px; }
-.btn[aria-disabled="true"] { opacity: .4; pointer-events: none; }
-.updated { font-size: 12px; color: var(--muted); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 14px; }
-.tile { --acc: var(--c0); position: relative; border-radius: var(--radius); padding: 18px; border: 1px solid color-mix(in srgb, var(--acc) 35%, var(--line));
-  background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 16%, var(--panel)), var(--panel) 70%); }
-.tile::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--acc); }
-.tile .lbl { font-size: 12px; color: var(--muted); }
-.tile .num { font-family: var(--serif); font-size: 34px; color: var(--acc); font-variant-numeric: tabular-nums; margin-top: 4px; }
-.tile .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-.meter { height: 6px; border-radius: 3px; background: var(--grid); margin-top: 8px; overflow: hidden; }
-.meter span { display: block; height: 100%; width: 0; background: var(--acc); border-radius: 3px; transition: width .6s ease-out; }
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; }
-.card { --acc: var(--c0); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0; }
-.card h2 { font-size: 16px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px; }
-.card h2 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--acc); }
-.cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
-.note { font-size: 12px; color: var(--muted); margin: 4px 0 14px; }
-.chart { position: relative; min-height: 200px; }
-.empty { font-size: 13px; color: var(--muted); padding: 16px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
-.bars { display: grid; gap: 8px; }
-.frow { display: grid; grid-template-columns: 8rem 1fr 2.5rem; align-items: center; gap: 8px; font-size: 13px; }
-.frow.click { cursor: pointer; }
-.fbar { height: 16px; background: var(--grid); border-radius: 8px; overflow: hidden; }
-.fbar span { display: block; height: 100%; border-radius: 8px; min-width: 4px; }
-.fval { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.conv { font-size: 12px; color: var(--muted); margin-top: 10px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.chip { --sc: var(--c7); font: inherit; font-size: 12px; cursor: pointer; border-radius: 999px; padding: 3px 10px; color: var(--fg);
-  border: 1px solid color-mix(in srgb, var(--sc) 40%, transparent); background: color-mix(in srgb, var(--sc) 10%, var(--panel)); }
-.chip[aria-pressed="true"] { background: var(--sc); border-color: var(--sc); color: #fff; }
-.chip .n { margin-left: .3em; opacity: .85; font-variant-numeric: tabular-nums; }
-.search { width: 100%; font: inherit; font-size: 13px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--fg); margin-bottom: 10px; }
-.scroll { max-height: 560px; overflow: auto; border-radius: 8px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font-weight: 600; color: var(--muted); padding: 6px 8px; border-bottom: 2px solid var(--line); white-space: nowrap; }
-th button { all: unset; cursor: pointer; }
-th[aria-sort="ascending"] button::after { content: " ↑"; }
-th[aria-sort="descending"] button::after { content: " ↓"; }
-td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-tbody tr:hover td { background: color-mix(in srgb, var(--c0) 6%, transparent); }
-td a { color: inherit; }
-.title a { font-weight: 600; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, var(--c0) 60%, transparent); }
-.co { font-weight: 600; }
-.score { --sc: var(--c0); display: inline-block; min-width: 2.4em; text-align: center; border-radius: 6px; padding: 1px 6px; font-weight: 600; background: color-mix(in srgb, var(--sc) 16%, transparent); color: var(--sc); }
-.pill { --sc: var(--c7); display: inline-block; padding: 1px 10px; border-radius: 999px; white-space: nowrap; background: color-mix(in srgb, var(--sc) 16%, transparent); border: 1px solid color-mix(in srgb, var(--sc) 45%, transparent); }
-.acts { display: flex; flex-wrap: wrap; gap: 4px; }
-.run { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
-.quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 8px; }
-.qlink { --b: var(--c0); display: block; text-decoration: none; color: var(--fg); border-radius: 10px; padding: 10px 14px; font-size: 12px;
-  border: 1px solid color-mix(in srgb, var(--b) 35%, var(--line)); background: color-mix(in srgb, var(--b) 10%, var(--panel)); }
-.qlink:hover { background: color-mix(in srgb, var(--b) 20%, var(--panel)); }
-.qlink b { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-.qlink span { color: var(--muted); }
-.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 4px 8px; font-size: 12px; display: none; white-space: nowrap; }
-.tip .d { color: var(--muted); }
 [hidden] { display: none !important; }
-.gate { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
-  background: radial-gradient(60% 60% at 15% 10%, color-mix(in srgb, var(--c0) 28%, transparent), transparent),
-              radial-gradient(50% 50% at 90% 20%, color-mix(in srgb, var(--c3) 24%, transparent), transparent),
-              radial-gradient(60% 60% at 60% 100%, color-mix(in srgb, var(--c2) 22%, transparent), transparent), var(--bg); }
-.gate-card { width: 100%; max-width: 420px; text-align: center; padding: 36px 28px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); }
-.gate-logo { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 16px; display: grid; place-items: center; color: #fff; font-family: var(--serif); font-size: 26px;
-  background: linear-gradient(135deg, var(--c0), var(--c3)); }
-.gate h1 { font-family: var(--serif); font-weight: 400; font-size: 28px; margin: 0 0 8px; }
-.gate p { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
-.gbtn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; font: inherit; font-size: 15px; font-weight: 500; padding: 11px 16px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
-.gbtn:hover { background: color-mix(in srgb, var(--c0) 8%, var(--panel)); }
+html, body { margin: 0; }
+body { background: var(--canvas); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+.ic { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ic.sm { width: 15px; height: 15px; }
+
+/* ---------- Sign-in ---------- */
+.gate { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.gate-art { background: var(--side); color: #fff; padding: 56px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+.gate-art::after { content: ""; position: absolute; inset: auto -20% -30% auto; width: 520px; height: 520px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 55%, transparent), transparent 65%); opacity: .55; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
+.brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+.gate-art h2 { font-size: 40px; line-height: 1.1; letter-spacing: -.02em; font-weight: 800; margin: 0 0 14px; max-width: 14ch; position: relative; z-index: 1; }
+.gate-art p { color: var(--side-text); max-width: 42ch; margin: 0; position: relative; z-index: 1; }
+.flow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; position: relative; z-index: 1; }
+.flow span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: color-mix(in srgb, var(--c) 18%, transparent); color: #fff; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+.flow i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.gate-side { display: grid; place-items: center; padding: 32px 20px; background: var(--canvas); }
+.gate-card { width: 100%; max-width: 380px; }
+.gate-card h1 { font-size: 26px; letter-spacing: -.02em; font-weight: 800; color: var(--ink); margin: 0 0 6px; }
+.gate-card p { color: var(--muted); margin: 0 0 24px; }
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; font: inherit; font-size: 15px; font-weight: 700; padding: 12px 16px; border-radius: var(--r-md); cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.gbtn:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
 .gbtn:disabled { opacity: .5; cursor: default; }
 .gbtn svg { width: 18px; height: 18px; }
-.gate-fine { font-size: 12px; color: var(--muted); margin-top: 18px; }
-.spinner { width: 36px; height: 36px; margin: 8px auto 14px; border-radius: 50%; border: 3px solid var(--grid); border-top-color: var(--c0); animation: spin .8s linear infinite; }
+.fine { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--muted); margin-top: 18px; }
+.err { color: var(--bad); font-size: 13px; margin-top: 12px; }
+.spinner { width: 34px; height: 34px; margin: 4px 0 14px; border-radius: 50%; border: 3px solid var(--grid); border-top-color: var(--brand); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.err { color: var(--bad); font-size: 13px; margin-top: 10px; }
-.foot { text-align: center; font-size: 12px; color: var(--muted); }
-.foot button { all: unset; cursor: pointer; text-decoration: underline; }
-@media (max-width: 640px) { .hide-sm { display: none; } .hero h1 { font-size: 26px; } }
+
+/* ---------- App shell ---------- */
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; background: linear-gradient(to right, var(--side) 240px, transparent 240px); }
+.side { background: var(--side); color: var(--side-text); padding: 22px 14px; display: flex; flex-direction: column; gap: 22px; position: sticky; top: 0; height: 100vh; }
+.side .brand { color: #fff; padding: 0 8px; }
+.nav { display: grid; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; text-decoration: none; font-weight: 600; color: var(--side-text); }
+.nav a:hover, .nav a.on { background: var(--side-2); color: #fff; }
+.nav-sub { font-size: 12px; color: var(--side-muted); padding: 0 10px; margin-top: 4px; }
+.sched { margin-top: auto; background: var(--side-2); border-radius: var(--r-md); padding: 14px; font-size: 13px; }
+.sched b { color: #fff; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sched .row { display: flex; justify-content: space-between; color: var(--side-muted); }
+.sched .row span:last-child { color: var(--side-text); font-weight: 600; }
+.side .out { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--side-muted); font-weight: 600; }
+.side .out:hover { color: #fff; background: var(--side-2); }
+
+.main { padding: 26px 28px 48px; display: grid; gap: 22px; align-content: start; min-width: 0; }
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px; }
+.top h1 { font-size: 26px; letter-spacing: -.02em; font-weight: 800; color: var(--ink); margin: 0; }
+.top .sub { color: var(--muted); margin-top: 2px; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.updated { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.updated i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 20%, transparent); }
+.btn { --b: var(--brand); display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; cursor: pointer; text-decoration: none; white-space: nowrap;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.btn:hover { border-color: color-mix(in srgb, var(--b) 45%, var(--line)); color: var(--b); }
+.btn.primary { background: var(--b); border-color: var(--b); color: #fff; }
+.btn.primary:hover { filter: brightness(1.07); color: #fff; }
+.btn.sm { padding: 4px 9px; font-size: 12px; border-radius: 8px; gap: 5px; }
+.btn[aria-disabled="true"] { opacity: .35; pointer-events: none; }
+.banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-md); font-size: 13px; font-weight: 600;
+  background: color-mix(in srgb, var(--s-ready) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--s-ready) 40%, var(--line)); color: var(--text); }
+.banner button { margin-left: auto; }
+.app-err { color: var(--bad); font-size: 13px; }
+
+/* ---------- Widgets ---------- */
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow); display: grid; gap: 8px; min-width: 0; }
+.kpi-head { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; font-size: 13px; }
+.kpi-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--k); background: color-mix(in srgb, var(--k) 14%, transparent); }
+.kpi-num { font-size: 30px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-height: 28px; }
+.kpi-spark { width: 90px; height: 28px; flex: none; }
+.meter { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; flex: 1; }
+.meter span { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--k); transition: width .6s ease-out; }
+
+.row { display: grid; gap: 14px; }
+.row.a { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+.row.b { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.row.c { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.row.d { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.w { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px; box-shadow: var(--shadow); min-width: 0; display: flex; flex-direction: column; }
+.w-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.w-title { display: flex; align-items: center; gap: 10px; }
+.w-title .kpi-icon { width: 30px; height: 30px; border-radius: 9px; }
+.w h2 { font-size: 15px; font-weight: 800; color: var(--ink); margin: 0; letter-spacing: -.01em; }
+.w .hint { font-size: 12px; color: var(--muted); margin: 1px 0 0; }
+.chart { position: relative; min-height: 190px; flex: 1; }
+.empty { display: grid; place-items: center; text-align: center; gap: 6px; min-height: 150px; color: var(--muted); font-size: 13px; padding: 16px; border: 1px dashed var(--line); border-radius: var(--r-md); flex: 1; }
+.empty .ic { width: 22px; height: 22px; color: var(--axis); }
+
+/* Next up queue */
+.queue { display: grid; gap: 10px; }
+.q { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--s-ready) 7%, var(--panel)), var(--panel) 60%); }
+.q-score { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: var(--sc); background: color-mix(in srgb, var(--sc) 14%, transparent); font-variant-numeric: tabular-nums; }
+.q-main { min-width: 0; }
+.q-role { font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; display: block; }
+.q-role:hover { color: var(--brand); }
+.q-meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; }
+.q-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.q-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Donut */
+.donut-wrap { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: center; flex: 1; }
+.legend { display: grid; gap: 4px; }
+.legend button { all: unset; cursor: pointer; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 8px; font-size: 13px; }
+.legend button:hover, .legend button[aria-pressed="true"] { background: var(--grid); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; }
+.legend b { font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* Bars */
+.hbars { display: grid; gap: 9px; }
+.hb { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2rem; gap: 10px; align-items: center; font-size: 13px; }
+.hb.click { cursor: pointer; border-radius: 8px; }
+.hb.click:hover .hb-l { color: var(--brand); }
+.hb-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hb-t { height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
+.hb-t span { display: block; height: 100%; border-radius: 5px; min-width: 3px; }
+.hb-v { text-align: right; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.conv { display: flex; gap: 10px; margin-top: 14px; }
+.conv div { flex: 1; padding: 10px; border-radius: var(--r-sm); background: var(--grid); }
+.conv b { display: block; font-size: 18px; color: var(--ink); font-weight: 800; }
+.conv span { font-size: 12px; color: var(--muted); }
+
+/* Table */
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.search { flex: 1 1 240px; display: flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--muted); }
+.search input { all: unset; flex: 1; color: var(--text); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { --sc: var(--muted); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--sc); }
+.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--sc) 14%, var(--panel)); border-color: color-mix(in srgb, var(--sc) 55%, var(--line)); }
+.chip .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.scroll { max-height: 600px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { position: sticky; top: 0; z-index: 1; background: color-mix(in srgb, var(--grid) 70%, var(--panel)); text-align: left; font-weight: 700; font-size: 12px; color: var(--muted); padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+th[aria-sort="ascending"] button::after { content: "↑"; color: var(--brand); }
+th[aria-sort="descending"] button::after { content: "↓"; color: var(--brand); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent); }
+.co { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.avatar { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--av); flex: none; }
+.role { min-width: 220px; }
+.nowrap { white-space: nowrap; }
+.role a { font-weight: 600; text-decoration: none; color: var(--ink); }
+.role a:hover { color: var(--brand); text-decoration: underline; }
+.role small { display: block; color: var(--muted); font-size: 12px; }
+.score { --sc: var(--brand); display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--ink); }
+.score .bar { width: 44px; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.score .bar span { display: block; height: 100%; background: var(--sc); border-radius: 3px; }
+.pill { --sc: var(--muted); display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; font-weight: 700; font-size: 12px;
+  background: color-mix(in srgb, var(--sc) 13%, transparent); color: color-mix(in srgb, var(--sc) 80%, var(--ink)); }
+.pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--sc); }
+.spons { font-size: 12px; color: var(--muted); }
+.acts { display: flex; gap: 5px; flex-wrap: nowrap; }
+
+/* Runs + links */
+.runs { display: grid; gap: 8px; }
+.run { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line); }
+.run .kpi-icon { width: 30px; height: 30px; }
+.run div { flex: 1; min-width: 0; }
+.run b { display: block; color: var(--ink); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.run small { color: var(--muted); font-size: 12px; }
+.links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.lnk { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line); text-decoration: none; }
+.lnk:hover { border-color: color-mix(in srgb, var(--k) 50%, var(--line)); background: color-mix(in srgb, var(--k) 5%, var(--panel)); }
+.lnk b { display: block; color: var(--ink); font-weight: 700; }
+.lnk small { color: var(--muted); font-size: 12px; }
+
+.tip { position: absolute; pointer-events: none; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 6px 10px; font-size: 12px; display: none; white-space: nowrap; }
+.tip .d { color: var(--muted); }
+.tip b { color: var(--ink); }
+
+/* Responsive */
+@media (max-width: 1200px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .row.c { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row.b { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; background: none; }
+  .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; }
+  .nav { display: flex; flex-wrap: wrap; } .nav-sub, .sched { display: none; } .side .out { margin-left: auto; }
+  .main { padding: 18px 16px 40px; }
+  .row.a, .row.b, .row.d { grid-template-columns: 1fr; }
+  .gate { grid-template-columns: 1fr; } .gate-art { padding: 32px 24px; } .gate-art h2 { font-size: 30px; }
+}
+@media (max-width: 640px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row.c { grid-template-columns: 1fr; }
+  .donut-wrap { grid-template-columns: 1fr; justify-items: center; } .legend { width: 100%; }
+  .links { grid-template-columns: 1fr; } .hide-sm { display: none; } .q { grid-template-columns: 46px minmax(0, 1fr); } .q-acts { grid-column: 1 / -1; justify-content: flex-start; }
+}
 @media (prefers-reduced-motion: no-preference) {
-  .tile, .card { animation: jdin .45s ease-out both; }
-  @keyframes jdin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .main.enter > * { animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
+  .main.enter > *:nth-child(2) { animation-delay: .04s; } .main.enter > *:nth-child(3) { animation-delay: .08s; } .main.enter > *:nth-child(4) { animation-delay: .12s; }
+  .main.enter > *:nth-child(5) { animation-delay: .16s; } .main.enter > *:nth-child(6) { animation-delay: .2s; } .main.enter > *:nth-child(7) { animation-delay: .24s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-pie" viewBox="0 0 24 24"><path d="M21.2 15.9A10 10 0 1 1 8 2.8"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
+  <symbol id="i-bars" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-funnel" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-sheet" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+</svg>
+
+<!-- ============ Sign-in ============ -->
 <div class="gate" id="gate">
-  <div class="gate-card">
-    <div class="gate-logo">J</div>
-    <h1>Job search command center</h1>
-    <div id="gate-signin">
-      <p>Sign in with the Google account that owns your job tracker to open the dashboard.</p>
-      <button class="gbtn" id="signin" type="button">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-        Sign in with Google
-      </button>
+  <div class="gate-art">
+    <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
+    <div>
+      <h2>Your job search, run by agents.</h2>
+      <p>Fresh senior and staff roles twice a day, a tailored resume for each, and referral drafts ready to send. Everything you apply to is tracked here.</p>
+      <div class="flow">
+        <span style="--c: var(--s-ready)"><i></i>Ready</span>
+        <span style="--c: var(--s-applied)"><i></i>Applied</span>
+        <span style="--c: var(--s-interview)"><i></i>Interviewing</span>
+        <span style="--c: var(--s-offer)"><i></i>Offer</span>
+      </div>
     </div>
-    <div id="gate-loading" hidden>
-      <div class="spinner"></div>
-      <p>Loading your dashboard…</p>
+    <div style="font-size:12px;color:var(--side-muted);position:relative;z-index:1">Runs at 7:43 AM and 5:43 PM Pacific</div>
+  </div>
+  <div class="gate-side">
+    <div class="gate-card">
+      <div id="gate-signin">
+        <h1>Sign in to your dashboard</h1>
+        <p>Use the Google account that owns your job tracker.</p>
+        <button class="gbtn" id="signin" type="button">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+          Sign in with Google
+        </button>
+      </div>
+      <div id="gate-loading" hidden>
+        <div class="spinner"></div>
+        <h1>Loading your dashboard</h1>
+        <p>Reading your tracker and run logs from Google Drive.</p>
+      </div>
+      <div class="err" id="gate-err"></div>
+      <div class="fine"><svg class="ic sm"><use href="#i-lock"/></svg><span>Read-only access. Your data goes straight from Google to this browser and is never stored on GitHub.</span></div>
     </div>
-    <div class="err" id="gate-err"></div>
-    <div class="gate-fine">Read-only access. Your data goes straight from Google to this browser and is never stored on GitHub.</div>
   </div>
 </div>
 
-<div class="wrap" id="app" hidden>
-  <header class="hero">
-    <h1>Job search command center</h1>
-    <p class="take" id="take">Loading…</p>
-    <p class="sched">Agents run daily at 7:43 AM and 5:43 PM Pacific · up to 10 diverse jobs a day · roles open to H-1B sponsorship</p>
-    <div class="actions">
-      <button class="btn solid" id="refresh" type="button">↻ Refresh data</button>
-      <a class="btn" style="--b: var(--c2)" data-link="tracker" target="_blank" rel="noopener">Update statuses in tracker ↗</a>
-      <a class="btn" style="--b: var(--c3)" data-link="config" target="_blank" rel="noopener">Edit search config ↗</a>
-      <a class="btn" style="--b: var(--c1)" data-link="resume" target="_blank" rel="noopener">Edit base resume ↗</a>
-      <span class="updated" id="updated"></span>
+<!-- ============ Dashboard ============ -->
+<div class="shell" id="app" hidden>
+  <aside class="side">
+    <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
+    <nav class="nav">
+      <a href="#overview" class="on"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
+      <a href="#analytics"><svg class="ic"><use href="#i-bars"/></svg>Analytics</a>
+      <a href="#jobs"><svg class="ic"><use href="#i-list"/></svg>All jobs</a>
+      <a href="#resources"><svg class="ic"><use href="#i-folder"/></svg>Files and runs</a>
+    </nav>
+    <div class="nav-sub">Edit</div>
+    <nav class="nav">
+      <a data-link="tracker" target="_blank" rel="noopener"><svg class="ic"><use href="#i-sheet"/></svg>Tracker sheet</a>
+      <a data-link="config" target="_blank" rel="noopener"><svg class="ic"><use href="#i-settings"/></svg>Search config</a>
+      <a data-link="resume" target="_blank" rel="noopener"><svg class="ic"><use href="#i-file"/></svg>Base resume</a>
+    </nav>
+    <div class="sched">
+      <b><svg class="ic sm"><use href="#i-clock"/></svg>Agent schedule</b>
+      <div class="row"><span>Morning run</span><span>7:43 AM</span></div>
+      <div class="row"><span>Evening run</span><span>5:43 PM</span></div>
+      <div class="row"><span>Daily limit</span><span id="side-limit">10 jobs</span></div>
     </div>
-    <div class="err" id="app-err"></div>
-  </header>
+    <button class="out" id="signout" type="button"><svg class="ic"><use href="#i-logout"/></svg>Sign out</button>
+  </aside>
 
-  <section class="tiles">
-    <div class="tile" style="--acc: var(--c0)"><div class="lbl">Prepared today</div><div class="num" id="t-today">—</div><div class="meter"><span id="t-meter"></span></div><div class="sub" id="t-limit">of the daily limit</div></div>
-    <div class="tile" style="--acc: var(--c1)"><div class="lbl">Ready to apply</div><div class="num" id="t-ready">—</div><div class="sub">tailored resume waiting</div></div>
-    <div class="tile" style="--acc: var(--c5)"><div class="lbl">Applied</div><div class="num" id="t-applied">—</div><div class="sub">all time, incl. later stages</div></div>
-    <div class="tile" style="--acc: var(--c3)"><div class="lbl">Interviewing</div><div class="num" id="t-int">—</div><div class="sub">incl. offers</div></div>
-    <div class="tile" style="--acc: var(--c2)"><div class="lbl">Offers</div><div class="num" id="t-offer">—</div><div class="sub">all time</div></div>
-  </section>
-
-  <section class="grid2">
-    <div class="card" style="--acc: var(--c3)">
-      <h2><span class="dot"></span>Pipeline</h2>
-      <p class="note">Each stage counts the jobs that reached it.</p>
-      <div class="bars" id="funnel"></div>
-      <div class="conv" id="conv"></div>
-    </div>
-    <div class="card" style="--acc: var(--c0)">
-      <h2><span class="dot"></span>Jobs prepared per day</h2>
-      <p class="note">Last 14 days with activity. Dashed line is the daily limit.</p>
-      <div class="chart" id="daily"></div>
-    </div>
-  </section>
-
-  <section class="card" id="jobs" style="--acc: var(--c1)">
-    <div class="cardhead">
-      <h2><span class="dot"></span>Jobs</h2>
-      <a class="btn sm" style="--b: var(--c2)" data-link="tracker" target="_blank" rel="noopener">Change a status ↗</a>
-    </div>
-    <p class="note">Click a status to filter, a column header to sort. Every button opens in a new tab.</p>
-    <div class="chips" id="chips"></div>
-    <input class="search" id="q" type="search" placeholder="Search company, role, location, sponsorship" aria-label="Search jobs">
-    <div class="scroll">
-      <table>
-        <thead><tr>
-          <th><button data-k="Date Found">Found</button></th>
-          <th><button data-k="Company">Company</button></th>
-          <th><button data-k="Job Title">Role</button></th>
-          <th class="hide-sm"><button data-k="Location">Location</button></th>
-          <th><button data-k="Match Score">Score</button></th>
-          <th class="hide-sm"><button data-k="Sponsorship Signal">Sponsorship</button></th>
-          <th><button data-k="Status">Status</button></th>
-          <th>Actions</th>
-        </tr></thead>
-        <tbody id="body"></tbody>
-      </table>
-      <div class="empty" id="jobs-empty" hidden></div>
-    </div>
-  </section>
-
-  <section class="grid2">
-    <div class="card" style="--acc: var(--c4)">
-      <h2><span class="dot"></span>Top companies</h2>
-      <p class="note">Jobs prepared per company, all time. Click one to filter the jobs table.</p>
-      <div id="companies"></div>
-    </div>
-    <div class="card" style="--acc: var(--c5)">
-      <div class="cardhead">
-        <h2><span class="dot"></span>Recent runs</h2>
-        <a class="btn sm" style="--b: var(--c5)" data-link="runs" target="_blank" rel="noopener">All logs ↗</a>
+  <main class="main" id="main">
+    <div class="top" id="overview">
+      <div>
+        <h1 id="greet">Overview</h1>
+        <div class="sub" id="take">Loading…</div>
       </div>
-      <p class="note">What each run searched, skipped and prepared.</p>
-      <div id="runs"></div>
+      <div class="top-actions">
+        <span class="updated" id="updated"></span>
+        <a class="btn" data-link="tracker" target="_blank" rel="noopener" style="--b: var(--s-offer)"><svg class="ic sm"><use href="#i-sheet"/></svg>Update statuses</a>
+        <button class="btn primary" id="refresh" type="button"><svg class="ic sm"><use href="#i-refresh"/></svg>Refresh</button>
+      </div>
     </div>
-  </section>
 
-  <section class="card" style="--acc: var(--c6)">
-    <h2><span class="dot"></span>Quick links</h2>
-    <p class="note">Edit the config or base resume anytime; the next run uses them.</p>
-    <div class="quick">
-      <a class="qlink" style="--b: var(--c2)" data-link="tracker" target="_blank" rel="noopener"><b>Tracker sheet ↗</b><span>Statuses, dates applied</span></a>
-      <a class="qlink" style="--b: var(--c3)" data-link="config" target="_blank" rel="noopener"><b>Search config ↗</b><span>Roles, companies, answers</span></a>
-      <a class="qlink" style="--b: var(--c1)" data-link="resume" target="_blank" rel="noopener"><b>Base resume ↗</b><span>Source for every tailoring</span></a>
-      <a class="qlink" style="--b: var(--c0)" data-link="resumes" target="_blank" rel="noopener"><b>Tailored resumes ↗</b><span>One folder per company</span></a>
-      <a class="qlink" style="--b: var(--c4)" data-link="outreach" target="_blank" rel="noopener"><b>Outreach drafts ↗</b><span>Referral messages to send</span></a>
-      <a class="qlink" style="--b: var(--c7)" data-link="folder" target="_blank" rel="noopener"><b>Job Agent folder ↗</b><span>Everything in one place</span></a>
+    <div class="banner" id="sample-banner" hidden>
+      <svg class="ic"><use href="#i-eye"/></svg>
+      <span>You're looking at sample data so you can preview the layout. Your real jobs appear after the agents' first run.</span>
+      <button class="btn sm" id="sample-off" type="button">Show my data</button>
     </div>
-  </section>
+    <div class="app-err" id="app-err"></div>
 
-  <p class="foot">Signed in with Google · data is read live and kept only in this tab · <button id="signout" type="button">Sign out</button></p>
+    <section class="kpis">
+      <div class="kpi" style="--k: var(--brand)">
+        <div class="kpi-head"><span class="kpi-icon"><svg class="ic"><use href="#i-zap"/></svg></span>Prepared today</div>
+        <div class="kpi-num" id="k-today">0</div>
+        <div class="kpi-foot"><div class="meter"><span id="k-meter"></span></div><span id="k-limit">of 10</span></div>
+      </div>
+      <div class="kpi" style="--k: var(--s-ready)">
+        <div class="kpi-head"><span class="kpi-icon"><svg class="ic"><use href="#i-briefcase"/></svg></span>Ready to apply</div>
+        <div class="kpi-num" id="k-ready">0</div>
+        <div class="kpi-foot"><span id="k-ready-sub">resumes waiting</span><svg class="kpi-spark" id="sp-ready"></svg></div>
+      </div>
+      <div class="kpi" style="--k: var(--s-applied)">
+        <div class="kpi-head"><span class="kpi-icon"><svg class="ic"><use href="#i-send"/></svg></span>Applied</div>
+        <div class="kpi-num" id="k-applied">0</div>
+        <div class="kpi-foot"><span id="k-applied-sub">all time</span><svg class="kpi-spark" id="sp-applied"></svg></div>
+      </div>
+      <div class="kpi" style="--k: var(--s-interview)">
+        <div class="kpi-head"><span class="kpi-icon"><svg class="ic"><use href="#i-users"/></svg></span>Interviewing</div>
+        <div class="kpi-num" id="k-int">0</div>
+        <div class="kpi-foot"><span id="k-int-sub">incl. offers</span></div>
+      </div>
+      <div class="kpi" style="--k: var(--s-offer)">
+        <div class="kpi-head"><span class="kpi-icon"><svg class="ic"><use href="#i-award"/></svg></span>Offers</div>
+        <div class="kpi-num" id="k-offer">0</div>
+        <div class="kpi-foot"><span id="k-offer-sub">all time</span></div>
+      </div>
+    </section>
+
+    <section class="row a">
+      <div class="w">
+        <div class="w-head">
+          <div class="w-title"><span class="kpi-icon" style="--k: var(--s-ready)"><svg class="ic"><use href="#i-target"/></svg></span><div><h2>Next up</h2><p class="hint">Your highest-scoring jobs that are ready to apply</p></div></div>
+          <button class="btn sm" id="see-ready" type="button">See all ready</button>
+        </div>
+        <div class="queue" id="queue"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-referral)"><svg class="ic"><use href="#i-pie"/></svg></span><div><h2>Status breakdown</h2><p class="hint">Click a status to filter the jobs table</p></div></div></div>
+        <div class="donut-wrap"><div class="chart" id="donut" style="min-height:170px"></div><div class="legend" id="legend"></div></div>
+      </div>
+    </section>
+
+    <section class="row b" id="analytics">
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-interview)"><svg class="ic"><use href="#i-funnel"/></svg></span><div><h2>Pipeline</h2><p class="hint">Jobs that reached each stage</p></div></div></div>
+        <div class="hbars" id="funnel"></div>
+        <div class="conv" id="conv"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-bars"/></svg></span><div><h2>Prepared per day</h2><p class="hint">Last 14 days · dashed line is the daily limit</p></div></div></div>
+        <div class="chart" id="daily"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-applied)"><svg class="ic"><use href="#i-trend"/></svg></span><div><h2>Applications over time</h2><p class="hint">Running total by date applied</p></div></div></div>
+        <div class="chart" id="cumul"></div>
+      </div>
+    </section>
+
+    <section class="row c">
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-offer)"><svg class="ic"><use href="#i-target"/></svg></span><div><h2>Match scores</h2><p class="hint">How well jobs fit your resume</p></div></div></div>
+        <div class="chart" id="scores"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-referral)"><svg class="ic"><use href="#i-shield"/></svg></span><div><h2>Sponsorship signal</h2><p class="hint">What postings say about H-1B</p></div></div></div>
+        <div class="hbars" id="spons"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-rejected)"><svg class="ic"><use href="#i-building"/></svg></span><div><h2>Top companies</h2><p class="hint">Click one to filter the table</p></div></div></div>
+        <div class="hbars" id="companies"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--brand-2)"><svg class="ic"><use href="#i-globe"/></svg></span><div><h2>Where jobs came from</h2><p class="hint">Job board or site</p></div></div></div>
+        <div class="hbars" id="sources"></div>
+      </div>
+    </section>
+
+    <section class="w" id="jobs">
+      <div class="w-head">
+        <div class="w-title"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-list"/></svg></span><div><h2>All jobs</h2><p class="hint" id="jobs-count">Every job the agents prepared</p></div></div>
+        <a class="btn sm" data-link="tracker" target="_blank" rel="noopener" style="--b: var(--s-offer)"><svg class="ic sm"><use href="#i-sheet"/></svg>Change a status</a>
+      </div>
+      <div class="tools">
+        <label class="search"><svg class="ic sm"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search company, role, location" aria-label="Search jobs"></label>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th><button data-k="Company">Company</button></th>
+            <th><button data-k="Job Title">Role</button></th>
+            <th><button data-k="Match Score">Match</button></th>
+            <th class="hide-sm"><button data-k="Sponsorship Signal">Sponsorship</button></th>
+            <th><button data-k="Status">Status</button></th>
+            <th class="hide-sm"><button data-k="Date Found">Found</button></th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody id="body"></tbody>
+        </table>
+        <div class="empty" id="jobs-empty" hidden style="border:0"></div>
+      </div>
+    </section>
+
+    <section class="row d" id="resources">
+      <div class="w">
+        <div class="w-head">
+          <div class="w-title"><span class="kpi-icon" style="--k: var(--brand-2)"><svg class="ic"><use href="#i-clock"/></svg></span><div><h2>Recent runs</h2><p class="hint">What each run searched, skipped and prepared</p></div></div>
+          <a class="btn sm" data-link="runs" target="_blank" rel="noopener"><svg class="ic sm"><use href="#i-folder"/></svg>All logs</a>
+        </div>
+        <div class="runs" id="runs"></div>
+      </div>
+      <div class="w">
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-ready)"><svg class="ic"><use href="#i-folder"/></svg></span><div><h2>Files</h2><p class="hint">Edits to the config or base resume apply on the next run</p></div></div></div>
+        <div class="links">
+          <a class="lnk" data-link="tracker" target="_blank" rel="noopener" style="--k: var(--s-offer)"><span class="kpi-icon"><svg class="ic"><use href="#i-sheet"/></svg></span><div><b>Tracker sheet</b><small>Statuses and dates applied</small></div></a>
+          <a class="lnk" data-link="config" target="_blank" rel="noopener" style="--k: var(--s-interview)"><span class="kpi-icon"><svg class="ic"><use href="#i-settings"/></svg></span><div><b>Search config</b><small>Roles, companies, answers</small></div></a>
+          <a class="lnk" data-link="resume" target="_blank" rel="noopener" style="--k: var(--s-ready)"><span class="kpi-icon"><svg class="ic"><use href="#i-file"/></svg></span><div><b>Base resume</b><small>Source for every tailoring</small></div></a>
+          <a class="lnk" data-link="resumes" target="_blank" rel="noopener" style="--k: var(--brand)"><span class="kpi-icon"><svg class="ic"><use href="#i-folder"/></svg></span><div><b>Tailored resumes</b><small>One folder per company</small></div></a>
+          <a class="lnk" data-link="outreach" target="_blank" rel="noopener" style="--k: var(--s-referral)"><span class="kpi-icon"><svg class="ic"><use href="#i-message"/></svg></span><div><b>Outreach drafts</b><small>Referral messages to send</small></div></a>
+          <a class="lnk" data-link="folder" target="_blank" rel="noopener" style="--k: var(--s-skipped)"><span class="kpi-icon"><svg class="ic"><use href="#i-inbox"/></svg></span><div><b>Job Agent folder</b><small>Everything in one place</small></div></a>
+        </div>
+      </div>
+    </section>
+  </main>
 </div>
 
 <script src="app.js"></script>

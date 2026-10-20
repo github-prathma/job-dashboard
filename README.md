@@ -96,6 +96,7 @@ The client ID is not a secret: Google only honors it from the origins you listed
 ## Using it
 - Open the site and click **Sign in with Google**, choosing `prathma0909@gmail.com`.
 - Data loads live from the tracker. It refreshes every 5 minutes while the tab is open, when you come back to the tab, and when you click **Refresh data**.
+- Before the first agent run, use **Preview with sample data** (in the Next up card) to see the layout with made-up jobs. A banner marks sample mode; **Show my data** switches back.
 - To change a status, edit the tracker sheet (the Status column has a dropdown). The dashboard is read-only.
 - Sign-in lasts about an hour per tab; after that Google asks again silently or with one click.
 

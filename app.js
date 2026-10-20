@@ -4,27 +4,51 @@
   const $ = (id) => document.getElementById(id);
   const fmt = d3.format(',');
   const pct = d3.format('.0%');
-  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const STATUS_ORDER = ['Ready to apply', 'Applied', 'Referral requested', 'Interviewing', 'Offer', 'Rejected', 'Skipped'];
-  const STATUS_COLOR = { 'Ready to apply': 'var(--c1)', 'Applied': 'var(--c5)', 'Referral requested': 'var(--c6)', 'Interviewing': 'var(--c3)', 'Offer': 'var(--c2)', 'Rejected': 'var(--c4)', 'Skipped': 'var(--c7)' };
+  const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+  const STATUSES = ['Ready to apply', 'Applied', 'Referral requested', 'Interviewing', 'Offer', 'Rejected', 'Skipped'];
+  const SVAR = { 'Ready to apply': '--s-ready', 'Applied': '--s-applied', 'Referral requested': '--s-referral', 'Interviewing': '--s-interview', 'Offer': '--s-offer', 'Rejected': '--s-rejected', 'Skipped': '--s-skipped' };
+  const sColor = (s) => `var(${SVAR[s] || '--s-skipped'})`;
+  const AVATAR = ['#2563eb', '#0ea5e9', '#8b5cf6', '#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#14b8a6', '#6366f1', '#ec4899'];
+  const PALETTE = ['--brand', '--s-referral', '--s-offer', '--s-ready', '--s-rejected', '--brand-2', '--s-interview', '--s-applied'];
 
   let token = null, tokenExpiry = 0, tokenClient = null, pendingResolve = null;
-  let jobs = [], runs = [], lastLoaded = null, timer = null;
-  let sortKey = 'Date Found', sortDir = -1, statusFilter = '';
+  let jobs = [], runs = [], lastLoaded = null, timer = null, usingSample = false, realData = null;
+  let sortKey = 'Match Score', sortDir = -1, statusFilter = '';
 
   const todayPT = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
   const statusOf = (r) => String(r['Status'] || '').trim() || 'Ready to apply';
   const safeUrl = (u) => (/^https:\/\//i.test(String(u || '').trim()) ? String(u).trim() : null);
-  const scoreColor = (s) => (s >= 85 ? 'var(--c2)' : s >= 75 ? 'var(--c0)' : 'var(--c6)');
+  const scoreColor = (s) => (s >= 85 ? 'var(--s-offer)' : s >= 75 ? 'var(--brand)' : 'var(--s-ready)');
+  const icon = (name, cls = 'ic sm') => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('class', cls); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + name); s.append(u); return s; };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const hash = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); };
+  const fmtDay = (s) => { const d = new Date(String(s).slice(0, 10) + 'T12:00:00Z'); return isNaN(d) ? String(s) : d3.utcFormat('%b %-d')(d); };
 
   document.querySelectorAll('[data-link]').forEach((a) => { a.href = C.LINKS[a.dataset.link]; });
-  $('t-limit').textContent = `of the ${C.DAILY_LIMIT}-a-day limit`;
+  $('k-limit').textContent = 'of ' + C.DAILY_LIMIT;
+  $('side-limit').textContent = C.DAILY_LIMIT + ' jobs';
+
+  // ---------- Screens ----------
+  function showGate(mode, error) {
+    $('app').hidden = true; $('gate').hidden = false;
+    $('gate-signin').hidden = mode !== 'signin';
+    $('gate-loading').hidden = mode !== 'loading';
+    $('gate-err').textContent = error || '';
+  }
+  function showApp() {
+    $('gate').hidden = true; $('app').hidden = false;
+    const m = $('main'); m.classList.remove('enter'); void m.offsetWidth; m.classList.add('enter');
+    render();
+  }
+  function clearToken() { token = null; tokenExpiry = 0; try { sessionStorage.removeItem('jd_tok'); } catch (e) {} }
+  function showGateError(msg) { if ($('app').hidden) showGate('signin', msg); else $('app-err').textContent = msg; }
 
   // ---------- Google sign-in (token kept in memory and this tab only) ----------
   $('signin').disabled = true;
   function initAuth() {
     if (!window.google || !google.accounts || !google.accounts.oauth2) { setTimeout(initAuth, 200); return; }
-    if (C.GOOGLE_CLIENT_ID.startsWith('PASTE_')) { showGate('signin', 'Add your Google OAuth client ID to config.js first.'); $('signin').disabled = true; return; }
+    if (C.GOOGLE_CLIENT_ID.startsWith('PASTE_')) { showGate('signin', 'Add your Google OAuth client ID to config.js first.'); return; }
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: C.GOOGLE_CLIENT_ID,
       scope: SCOPES,
@@ -34,10 +58,9 @@
         token = resp.access_token;
         tokenExpiry = Date.now() + (Number(resp.expires_in) || 3600) * 1000 - 60000;
         try { sessionStorage.setItem('jd_tok', JSON.stringify({ token, tokenExpiry })); } catch (e) {}
-        if (pendingResolve) { pendingResolve(); pendingResolve = null; }
-        else start();
+        if (pendingResolve) { pendingResolve(); pendingResolve = null; } else start();
       },
-      error_callback: (err) => showGateError('Sign-in was closed or blocked (' + (err && err.type) + '). Allow pop-ups and try again.'),
+      error_callback: (err) => showGateError('Sign-in was closed or blocked (' + (err && err.type) + '). Allow pop-ups for this site and try again.'),
     });
     $('signin').disabled = false;
     try {
@@ -45,22 +68,10 @@
       if (saved && saved.tokenExpiry > Date.now()) { token = saved.token; tokenExpiry = saved.tokenExpiry; start(); }
     } catch (e) {}
   }
-  // Screens: the sign-in gate (with a loading state) and the dashboard.
-  function showGate(mode, error) {
-    $('app').hidden = true; $('gate').hidden = false;
-    $('gate-signin').hidden = mode !== 'signin';
-    $('gate-loading').hidden = mode !== 'loading';
-    $('gate-err').textContent = error || '';
-  }
-  function showApp() { $('gate').hidden = true; $('app').hidden = false; }
-  function clearToken() { token = null; tokenExpiry = 0; try { sessionStorage.removeItem('jd_tok'); } catch (e) {} }
-  function showGateError(msg) {
-    if ($('app').hidden) showGate('signin', msg); else $('app-err').textContent = msg;
-  }
   $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: '' }); } });
   $('signout').addEventListener('click', () => {
     if (token) google.accounts.oauth2.revoke(token, () => {});
-    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = [];
+    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; usingSample = false; realData = null;
     showGate('signin');
   });
   function ensureToken() {
@@ -77,8 +88,8 @@
 
   // ---------- Data ----------
   async function load() {
-    $('updated').textContent = 'Refreshing…';
     $('app-err').textContent = '';
+    setUpdated('Refreshing…');
     try {
       const [sheet, drive] = await Promise.all([
         api(`https://sheets.googleapis.com/v4/spreadsheets/${C.TRACKER_SHEET_ID}/values/${encodeURIComponent(C.TRACKER_RANGE)}`),
@@ -89,20 +100,26 @@
       ]);
       const values = sheet.values || [];
       const cols = values[0] || [];
-      jobs = values.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])));
-      runs = (drive.files || []).map((f) => ({ title: f.name, created: f.createdTime, link: f.webViewLink }));
+      const rows = values.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])));
+      realData = { jobs: rows, runs: (drive.files || []).map((f) => ({ title: f.name, created: f.createdTime, link: f.webViewLink })) };
+      if (!usingSample || rows.length) { usingSample = false; jobs = realData.jobs; runs = realData.runs; }
       lastLoaded = new Date();
-      render();
-      $('updated').textContent = 'Updated ' + lastLoaded.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      if (!$('app').hidden) render();
+      setUpdated();
       return true;
     } catch (e) {
       $('app-err').textContent = 'Could not load data: ' + e.message;
-      $('updated').textContent = lastLoaded ? 'Updated ' + lastLoaded.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+      setUpdated();
       return e;
     }
   }
+  function setUpdated(text) {
+    const u = $('updated'); u.replaceChildren();
+    if (text) { u.textContent = text; return; }
+    if (!lastLoaded) return;
+    u.append(el('i'), document.createTextNode('Live · updated ' + lastLoaded.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })));
+  }
 
-  // After sign-in: show a spinner, load the data, and open the dashboard only if it loaded.
   async function start() {
     showGate('loading');
     const ok = await load();
@@ -118,179 +135,348 @@
   $('refresh').addEventListener('click', load);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && token && lastLoaded && Date.now() - lastLoaded > 60000) load(); });
 
+  // ---------- Sample data (preview only, clearly bannered) ----------
+  function sampleData() {
+    const cos = ['Northwind Pay', 'Ledgerline', 'Cobalt Labs', 'Brightpath AI', 'Fernwood Bank', 'Quill Commerce', 'Atlas Payroll', 'Meridian Cloud', 'Harbor Health Tech', 'Sable Systems'];
+    const roles = ['Senior Software Engineer, Payments', 'Staff Engineer, Platform', 'Senior Full Stack Engineer', 'Senior Backend Engineer, Risk', 'Staff Software Engineer, AI Applications', 'Senior Software Engineer, Payroll'];
+    const locs = ['San Francisco, CA', 'Remote (US)', 'Sunnyvale, CA', 'Mountain View, CA', 'San Jose, CA', 'Palo Alto, CA'];
+    const srcs = ['Greenhouse', 'Ashby', 'Lever', 'LinkedIn', 'Company site'];
+    const spons = ['Not stated', 'Not stated', 'Sponsors', 'Transfers welcome'];
+    const stat = ['Ready to apply', 'Ready to apply', 'Ready to apply', 'Applied', 'Applied', 'Referral requested', 'Interviewing', 'Rejected', 'Offer', 'Skipped'];
+    const out = []; const now = new Date();
+    for (let i = 0; i < 34; i++) {
+      const d = new Date(now); d.setDate(d.getDate() - Math.floor(i / 3));
+      const day = d.toISOString().slice(0, 10);
+      const s = stat[(i * 7) % stat.length];
+      const ad = new Date(d); ad.setDate(ad.getDate() + 1);
+      out.push({ 'Date Found': day, 'Company': cos[(i * 3) % cos.length], 'Job Title': roles[i % roles.length], 'Location': locs[(i * 5) % locs.length], 'Job Link': '', 'Source': srcs[(i * 2) % srcs.length],
+        'Match Score': String(70 + ((i * 13) % 27)), 'Sponsorship Signal': spons[i % spons.length], 'Status': s,
+        'Date Applied': ['Applied', 'Referral requested', 'Interviewing', 'Rejected', 'Offer'].includes(s) ? ad.toISOString().slice(0, 10) : '' });
+    }
+    return { jobs: out, runs: [0, 1, 2].map((k) => ({ title: `Run ${new Date(now - k * 43200000).toISOString().slice(0, 10)} ${k % 2 ? '5:43 PM' : '7:43 AM'} PT`, created: '', link: '' })) };
+  }
+  function setSample(on) {
+    usingSample = on;
+    const d = on ? sampleData() : (realData || { jobs: [], runs: [] });
+    jobs = d.jobs; runs = d.runs; statusFilter = ''; $('q').value = '';
+    render();
+  }
+  $('sample-off').addEventListener('click', () => setSample(false));
+
   // ---------- Derived numbers ----------
-  function derive() {
+  function count(rows, key, fallback) {
     const n = {};
-    for (const r of jobs) { const s = statusOf(r); n[s] = (n[s] || 0) + 1; }
+    for (const r of rows) { const k = String(r[key] || '').trim() || fallback; if (k) n[k] = (n[k] || 0) + 1; }
+    return Object.entries(n).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+  }
+  function derive() {
+    const n = {}; for (const r of jobs) { const s = statusOf(r); n[s] = (n[s] || 0) + 1; }
     const g = (k) => n[k] || 0;
-    const statusCounts = [...STATUS_ORDER, ...Object.keys(n).filter((s) => !STATUS_ORDER.includes(s))].map((status) => ({ status, jobs: g(status) }));
+    const statusCounts = [...STATUSES, ...Object.keys(n).filter((s) => !STATUSES.includes(s))].map((status) => ({ status, jobs: g(status) }));
     const applied = g('Applied') + g('Referral requested') + g('Interviewing') + g('Offer') + g('Rejected');
     const funnel = [
-      { stage: 'Prepared', jobs: jobs.length - g('Skipped') },
-      { stage: 'Applied', jobs: applied },
-      { stage: 'Interviewing', jobs: g('Interviewing') + g('Offer') },
-      { stage: 'Offer', jobs: g('Offer') },
+      { label: 'Prepared', value: jobs.length - g('Skipped'), color: 'var(--brand)' },
+      { label: 'Applied', value: applied, color: 'var(--s-applied)' },
+      { label: 'Interviewing', value: g('Interviewing') + g('Offer'), color: 'var(--s-interview)' },
+      { label: 'Offer', value: g('Offer'), color: 'var(--s-offer)' },
     ];
-    const d = {};
-    for (const r of jobs) { const k = String(r['Date Found'] || '').trim().slice(0, 10); if (k) d[k] = (d[k] || 0) + 1; }
-    const byDay = Object.keys(d).sort().map((date) => ({ date, prepared: d[date] }));
-    const c = {};
-    for (const r of jobs) { const k = String(r['Company'] || '').trim(); if (k) c[k] = (c[k] || 0) + 1; }
-    const byCompany = Object.entries(c).map(([company, n2]) => ({ company, jobs: n2 })).sort((a, b) => b.jobs - a.jobs || a.company.localeCompare(b.company)).slice(0, 10);
-    return { statusCounts, funnel, byDay, byCompany, g };
+    const perDay = (key, pred) => { const d = {}; for (const r of jobs) { if (pred && !pred(r)) continue; const k = String(r[key] || '').trim().slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(k)) d[k] = (d[k] || 0) + 1; } return Object.keys(d).sort().map((date) => ({ date, value: d[date] })); };
+    const byDay = perDay('Date Found');
+    const appliedDays = perDay('Date Applied');
+    let run = 0; const cumul = appliedDays.map((r) => ({ date: r.date, value: (run += r.value) }));
+    return { statusCounts, funnel, byDay, appliedDays, cumul, g,
+      byCompany: count(jobs, 'Company').slice(0, 7), bySource: count(jobs, 'Source', 'Unknown').slice(0, 6), bySpons: count(jobs, 'Sponsorship Signal', 'Not recorded').slice(0, 6) };
   }
 
-  // ---------- Rendering ----------
-  const btn = (text, url, color) => {
+  // ---------- Small builders ----------
+  const btn = (text, url, iconName, color) => {
     const u = safeUrl(url);
-    const a = document.createElement('a'); a.className = 'btn sm'; a.style.setProperty('--b', color); a.textContent = text;
-    if (u) { a.href = u; a.target = '_blank'; a.rel = 'noopener'; } else { a.setAttribute('aria-disabled', 'true'); a.title = 'Not available'; }
+    const a = el('a', 'btn sm'); if (color) a.style.setProperty('--b', color);
+    if (iconName) a.append(icon(iconName));
+    a.append(document.createTextNode(text));
+    if (u) { a.href = u; a.target = '_blank'; a.rel = 'noopener'; } else { a.setAttribute('aria-disabled', 'true'); a.title = usingSample ? 'Sample data has no links' : 'Not available yet'; }
     return a;
   };
-  const emptyBox = (el, text) => { el.replaceChildren(); const e = document.createElement('div'); e.className = 'empty'; e.textContent = text; el.append(e); };
+  const emptyBox = (box, text, iconName = 'inbox', action) => {
+    const e = el('div', 'empty'); e.append(icon(iconName, 'ic'), el('div', null, text));
+    if (action) e.append(action);
+    box.replaceChildren(e);
+  };
+  const sampleButton = () => { const b = el('button', 'btn sm'); b.type = 'button'; b.append(icon('eye'), document.createTextNode('Preview with sample data')); b.addEventListener('click', () => setSample(true)); return b; };
 
-  function hbars(el, rows, labelKey, valKey, colorFor, onClick) {
-    el.replaceChildren();
-    const max = Math.max(1, ...rows.map((r) => r[valKey]));
+  function hbars(box, rows, colorFor, onClick) {
+    box.replaceChildren();
+    if (!rows.length) return emptyBox(box, 'Nothing to show yet.');
+    const max = Math.max(1, ...rows.map((r) => r.value));
     rows.forEach((r, i) => {
-      const row = document.createElement('div'); row.className = 'frow' + (onClick ? ' click' : '');
-      if (onClick) { row.addEventListener('click', () => onClick(r)); row.title = 'Filter jobs by ' + r[labelKey]; }
-      const l = document.createElement('span'); l.textContent = r[labelKey];
-      const bar = document.createElement('div'); bar.className = 'fbar';
-      const fill = document.createElement('span'); fill.style.width = (r[valKey] / max * 100) + '%'; fill.style.background = colorFor(r, i); bar.append(fill);
-      const v = document.createElement('span'); v.className = 'fval'; v.textContent = fmt(r[valKey]);
-      row.append(l, bar, v); el.append(row);
+      const row = el('div', 'hb' + (onClick ? ' click' : ''));
+      if (onClick) { row.tabIndex = 0; row.addEventListener('click', () => onClick(r)); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(r); }); row.title = 'Filter jobs by ' + r.label; }
+      const t = el('div', 'hb-t'); const f = el('span'); f.style.width = (r.value / max * 100) + '%'; f.style.background = colorFor(r, i); t.append(f);
+      row.append(el('span', 'hb-l', r.label), t, el('span', 'hb-v', fmt(r.value)));
+      box.append(row);
     });
   }
 
-  function barChart(el, rows) {
-    el.replaceChildren();
-    if (!rows.length) return emptyBox(el, 'No jobs prepared yet. The first run fills this in.');
-    const W = Math.max(260, el.clientWidth || 360), H = 200, ref = C.DAILY_LIMIT;
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
-    const tip = d3.select(el).append('div').attr('class', 'tip');
-    const grad = svg.append('defs').append('linearGradient').attr('id', 'bargrad').attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
-    grad.append('stop').attr('offset', 0).style('stop-color', css('--c0'));
-    grad.append('stop').attr('offset', 1).style('stop-color', css('--c3'));
-    const y = d3.scaleLinear([0, Math.max(ref, d3.max(rows, (d) => d.prepared) || 1)], [H - 28, 10]).nice();
-    const yAxis = svg.append('g').call(d3.axisLeft(y).ticks(4).tickFormat(d3.format('d'))).attr('font-size', null).attr('font-family', null);
-    let ml = 8; yAxis.selectAll('text').each(function () { ml = Math.max(ml, this.getComputedTextLength() + 12); });
-    yAxis.attr('transform', `translate(${ml},0)`); yAxis.select('.domain').remove();
-    yAxis.selectAll('.tick line').attr('x2', W - ml - 4).attr('stroke', 'var(--grid)');
-    yAxis.selectAll('text').attr('fill', 'var(--muted)').style('font-size', '12px');
-    const fmtDay = (s) => { const d = new Date(s + 'T12:00:00Z'); return isNaN(d) ? s : d3.utcFormat('%b %-d')(d); };
-    const x = d3.scaleBand(rows.map((d) => d.date), [ml, W - 4]).padding(0.3);
-    const xAxis = svg.append('g').attr('transform', `translate(0,${H - 28})`).call(d3.axisBottom(x).tickFormat(fmtDay)).attr('font-size', null).attr('font-family', null);
-    xAxis.select('.domain').attr('stroke', 'var(--axis)'); xAxis.selectAll('.tick line').remove();
-    const labels = xAxis.selectAll('text').attr('fill', 'var(--muted)').style('font-size', '12px');
-    let widest = 0; labels.each(function () { widest = Math.max(widest, this.getComputedTextLength()); });
-    if (widest + 6 > x.step()) { const every = Math.ceil((widest + 6) / x.step()); labels.attr('display', (d, i) => (i % every === 0 ? null : 'none')); }
-    svg.append('line').attr('x1', ml).attr('x2', W - 4).attr('y1', y(ref)).attr('y2', y(ref)).attr('stroke', 'var(--axis)').attr('stroke-dasharray', '4 4');
+  function sparkline(svgEl, rows, color) {
+    const s = d3.select(svgEl); s.selectAll('*').remove();
+    const data = rows.slice(-14);
+    if (data.length < 2) return;
+    const W = 90, H = 28;
+    s.attr('viewBox', `0 0 ${W} ${H}`);
+    const x = d3.scaleLinear([0, data.length - 1], [2, W - 2]);
+    const y = d3.scaleLinear([0, d3.max(data, (d) => d.value) || 1], [H - 3, 3]);
+    s.append('path').datum(data).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round')
+      .attr('d', d3.line().x((d, i) => x(i)).y((d) => y(d.value)));
+  }
+
+  function addTip(box) { return d3.select(box).append('div').attr('class', 'tip'); }
+  function showTip(tip, box, ev, lines) {
+    const [mx, my] = d3.pointer(ev, box);
+    tip.style('display', 'block').html('');
+    tip.append('div').attr('class', 'd').text(lines[0]);
+    tip.append('b').text(lines[1]);
+    const tw = tip.node().offsetWidth;
+    tip.style('left', Math.min(Math.max(0, mx + 12), box.clientWidth - tw) + 'px').style('top', Math.max(0, my - 44) + 'px');
+  }
+  function axes(svg, x, y, W, H, ml, xFmt) {
+    const yA = svg.append('g').attr('transform', `translate(${ml},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d3.format('d'))).attr('font-size', null).attr('font-family', null);
+    yA.select('.domain').remove();
+    yA.selectAll('.tick line').attr('x2', W - ml - 4).attr('stroke', cssVar('--grid'));
+    yA.selectAll('text').attr('fill', cssVar('--muted')).style('font-size', '11px');
+    const xA = svg.append('g').attr('transform', `translate(0,${H - 24})`).call(xFmt).attr('font-size', null).attr('font-family', null);
+    xA.select('.domain').attr('stroke', cssVar('--axis')); xA.selectAll('.tick line').remove();
+    const labels = xA.selectAll('text').attr('fill', cssVar('--muted')).style('font-size', '11px');
+    return labels;
+  }
+  function measureLeft(svg, y) {
+    const g = svg.append('g').call(d3.axisLeft(y).ticks(4).tickFormat(d3.format('d'))).attr('font-size', null).attr('font-family', null);
+    g.selectAll('text').style('font-size', '11px');
+    let w = 8; g.selectAll('text').each(function () { w = Math.max(w, this.getComputedTextLength() + 12); });
+    g.remove(); return w;
+  }
+  function thin(labels, step) { let widest = 0; labels.each(function () { widest = Math.max(widest, this.getComputedTextLength()); }); if (widest + 8 > step) { const every = Math.ceil((widest + 8) / step); labels.attr('display', (d, i) => (i % every === 0 ? null : 'none')); } }
+
+  function barChart(box, rows, opts) {
+    box.replaceChildren();
+    if (!rows.length) return emptyBox(box, opts.empty, 'bars');
+    const W = Math.max(240, box.clientWidth || 320), H = 190;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const tip = addTip(box);
+    const gid = 'g' + Math.random().toString(36).slice(2, 8);
+    const grad = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    grad.append('stop').attr('offset', 0).attr('stop-color', opts.c1);
+    grad.append('stop').attr('offset', 1).attr('stop-color', opts.c2);
+    const y = d3.scaleLinear([0, Math.max(opts.ref || 0, d3.max(rows, (d) => d.value) || 1)], [H - 24, 10]).nice();
+    const ml = measureLeft(svg, y);
+    const x = d3.scaleBand(rows.map((d) => d.key), [ml, W - 4]).padding(0.28);
+    const labels = axes(svg, x, y, W, H, ml, d3.axisBottom(x).tickFormat(opts.xFmt || ((d) => d)));
+    thin(labels, x.step());
+    if (opts.ref) svg.append('line').attr('x1', ml).attr('x2', W - 4).attr('y1', y(opts.ref)).attr('y2', y(opts.ref)).attr('stroke', cssVar('--axis')).attr('stroke-dasharray', '4 4');
     svg.append('g').selectAll('rect').data(rows).join('rect')
-      .attr('x', (d) => x(d.date) + Math.max(0, (x.bandwidth() - 32) / 2)).attr('width', Math.min(32, x.bandwidth()))
-      .attr('y', (d) => y(d.prepared)).attr('height', (d) => y(0) - y(d.prepared)).attr('rx', 4).attr('fill', 'url(#bargrad)')
-      .on('mousemove', (ev, d) => {
-        const [mx, my] = d3.pointer(ev, el);
-        tip.style('display', 'block').html('');
-        tip.append('div').attr('class', 'd').text(fmtDay(d.date));
-        tip.append('div').text(`${fmt(d.prepared)} prepared`);
-        const tw = tip.node().offsetWidth;
-        tip.style('left', Math.min(Math.max(0, mx + 10), el.clientWidth - tw) + 'px').style('top', Math.max(0, my - 40) + 'px');
-      })
+      .attr('x', (d) => x(d.key) + Math.max(0, (x.bandwidth() - 28) / 2)).attr('width', Math.min(28, x.bandwidth()))
+      .attr('y', (d) => y(d.value)).attr('height', (d) => y(0) - y(d.value)).attr('rx', 5).attr('fill', `url(#${gid})`)
+      .on('mousemove', (ev, d) => showTip(tip, box, ev, [opts.xFmt ? opts.xFmt(d.key) : d.key, `${fmt(d.value)} ${opts.unit}`]))
       .on('mouseleave', () => tip.style('display', 'none'));
   }
 
+  function areaChart(box, rows, opts) {
+    box.replaceChildren();
+    if (rows.length < 1) return emptyBox(box, opts.empty, 'trend');
+    const data = rows.map((r) => ({ d: new Date(r.date + 'T12:00:00Z'), value: r.value, date: r.date }));
+    if (data.length === 1) data.unshift({ d: new Date(data[0].d - 86400000), value: 0, date: '' });
+    const W = Math.max(240, box.clientWidth || 320), H = 190;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const tip = addTip(box);
+    const color = opts.color;
+    const gid = 'a' + Math.random().toString(36).slice(2, 8);
+    const grad = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    [[0, .32], [.5, .1], [1, 0]].forEach(([o, a]) => grad.append('stop').attr('offset', o).attr('stop-color', color).attr('stop-opacity', a));
+    const y = d3.scaleLinear([0, d3.max(data, (d) => d.value) || 1], [H - 24, 12]).nice();
+    const ml = measureLeft(svg, y);
+    const x = d3.scaleUtc(d3.extent(data, (d) => d.d), [ml + 4, W - 10]);
+    const labels = axes(svg, x, y, W, H, ml, d3.axisBottom(x).ticks(Math.max(2, Math.floor(W / 80))).tickFormat(d3.utcFormat('%b %-d')));
+    thin(labels, (W - ml) / Math.max(1, labels.size()));
+    svg.append('path').datum(data).attr('fill', `url(#${gid})`).attr('d', d3.area().x((d) => x(d.d)).y0(y(0)).y1((d) => y(d.value)));
+    svg.append('path').datum(data).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2.5).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('d', d3.line().x((d) => x(d.d)).y((d) => y(d.value)));
+    const last = data[data.length - 1];
+    svg.append('circle').attr('cx', x(last.d)).attr('cy', y(last.value)).attr('r', 4.5).attr('fill', color).attr('stroke', cssVar('--panel')).attr('stroke-width', 2);
+    const dot = svg.append('circle').attr('r', 4).attr('fill', color).attr('display', 'none');
+    const bis = d3.bisector((d) => d.d).center;
+    svg.append('rect').attr('x', ml).attr('y', 0).attr('width', W - ml).attr('height', H - 24).attr('fill', 'transparent')
+      .on('mousemove', (ev) => { const [mx] = d3.pointer(ev); const d = data[bis(data, x.invert(mx))]; dot.attr('display', null).attr('cx', x(d.d)).attr('cy', y(d.value)); showTip(tip, box, ev, [d3.utcFormat('%b %-d, %Y')(d.d), `${fmt(d.value)} applications`]); })
+      .on('mouseleave', () => { dot.attr('display', 'none'); tip.style('display', 'none'); });
+  }
+
+  function donut(box, legendBox, rows) {
+    box.replaceChildren(); legendBox.replaceChildren();
+    const total = d3.sum(rows, (r) => r.jobs);
+    const S = 170, R = S / 2, inner = R - 22;
+    const svg = d3.select(box).append('svg').attr('width', S).attr('height', S).attr('viewBox', `0 0 ${S} ${S}`).style('display', 'block').style('margin', '0 auto');
+    const g = svg.append('g').attr('transform', `translate(${R},${R})`);
+    const tip = addTip(box);
+    if (!total) g.append('circle').attr('r', (R + inner) / 2).attr('fill', 'none').attr('stroke', cssVar('--grid')).attr('stroke-width', R - inner);
+    else {
+      const arcs = d3.pie().sort(null).value((d) => d.jobs).padAngle(0.02)(rows.filter((r) => r.jobs > 0));
+      g.selectAll('path').data(arcs).join('path').attr('d', d3.arc().innerRadius(inner).outerRadius(R).cornerRadius(4))
+        .attr('fill', (d) => cssVar(SVAR[d.data.status] || '--s-skipped')).style('cursor', 'pointer')
+        .attr('opacity', (d) => (!statusFilter || statusFilter === d.data.status ? 1 : 0.35))
+        .on('click', (ev, d) => filterStatus(d.data.status))
+        .on('mousemove', (ev, d) => showTip(tip, box, ev, [d.data.status, `${fmt(d.data.jobs)} jobs · ${pct(d.data.jobs / total)}`]))
+        .on('mouseleave', () => tip.style('display', 'none'));
+    }
+    g.append('text').attr('text-anchor', 'middle').attr('dy', '-0.1em').attr('fill', cssVar('--ink')).style('font-size', '28px').style('font-weight', 800).text(fmt(total));
+    g.append('text').attr('text-anchor', 'middle').attr('dy', '1.5em').attr('fill', cssVar('--muted')).style('font-size', '12px').text('total jobs');
+    for (const r of rows) {
+      const b = el('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(statusFilter === r.status));
+      const sw = el('i'); sw.style.background = sColor(r.status);
+      b.append(sw, el('span', null, r.status), el('b', null, fmt(r.jobs)));
+      b.addEventListener('click', () => filterStatus(r.status));
+      legendBox.append(b);
+    }
+  }
+
+  function filterStatus(s) {
+    statusFilter = statusFilter === s ? '' : s;
+    render();
+    $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('see-ready').addEventListener('click', () => { statusFilter = 'Ready to apply'; $('q').value = ''; render(); $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+
+  // ---------- Sections ----------
+  function renderQueue() {
+    const box = $('queue');
+    const ready = jobs.filter((r) => statusOf(r) === 'Ready to apply').sort((a, b) => (Number(b['Match Score']) || 0) - (Number(a['Match Score']) || 0)).slice(0, 4);
+    if (!ready.length) {
+      return emptyBox(box, jobs.length ? 'Nothing waiting. Every prepared job has a status.' : 'No jobs yet. The agents add up to 10 a day, starting with the next run.', 'target', jobs.length || usingSample ? null : sampleButton());
+    }
+    box.replaceChildren();
+    for (const r of ready) {
+      const q = el('div', 'q');
+      const sc = Number(r['Match Score']) || 0;
+      const s = el('div', 'q-score', String(r['Match Score'] || '—')); s.style.setProperty('--sc', scoreColor(sc)); s.title = 'Match score';
+      const main = el('div', 'q-main');
+      const u = safeUrl(r['Job Link']);
+      const role = el(u ? 'a' : 'span', 'q-role', r['Job Title']); if (u) { role.href = u; role.target = '_blank'; role.rel = 'noopener'; }
+      const meta = el('div', 'q-meta');
+      const m1 = el('span'); m1.append(icon('building'), document.createTextNode(r['Company'] || '—'));
+      const m2 = el('span'); m2.append(icon('pin'), document.createTextNode(r['Location'] || '—'));
+      const m3 = el('span'); m3.append(icon('shield'), document.createTextNode(r['Sponsorship Signal'] || 'Not stated'));
+      meta.append(m1, m2, m3); main.append(role, meta);
+      const acts = el('div', 'q-acts');
+      acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'));
+      acts.firstChild.classList.add('primary');
+      q.append(s, main, acts); box.append(q);
+    }
+  }
+
   function renderChips(statusCounts) {
-    const el = $('chips'); el.replaceChildren();
-    const mk = (label, value, count, color) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.style.setProperty('--sc', color);
-      b.setAttribute('aria-pressed', String(statusFilter === value));
-      b.append(document.createTextNode(label));
-      const n = document.createElement('span'); n.className = 'n'; n.textContent = fmt(count); b.append(n);
-      b.addEventListener('click', () => { statusFilter = statusFilter === value ? '' : value; renderChips(statusCounts); renderJobs(); });
-      el.append(b);
+    const box = $('chips'); box.replaceChildren();
+    const mk = (label, value, n, color) => {
+      const b = el('button', 'chip'); b.type = 'button'; b.style.setProperty('--sc', color); b.setAttribute('aria-pressed', String(statusFilter === value));
+      b.append(el('i'), document.createTextNode(label), el('span', 'n', fmt(n)));
+      b.addEventListener('click', () => { statusFilter = statusFilter === value ? '' : value; render(); });
+      box.append(b);
     };
-    mk('All', '', jobs.length, 'var(--c7)');
-    for (const r of statusCounts) mk(r.status, r.status, r.jobs, STATUS_COLOR[r.status] || 'var(--c7)');
+    mk('All', '', jobs.length, 'var(--muted)');
+    for (const r of statusCounts) if (r.jobs) mk(r.status, r.status, r.jobs, sColor(r.status));
   }
 
   function renderJobs() {
     const body = $('body'), empty = $('jobs-empty');
     const q = $('q').value.trim().toLowerCase();
-    let rows = jobs.filter((r) => (!statusFilter || statusOf(r) === statusFilter) &&
-      (!q || ['Company', 'Job Title', 'Location', 'Status', 'Sponsorship Signal'].some((k) => String(r[k] || '').toLowerCase().includes(q))));
+    const rows = jobs.filter((r) => (!statusFilter || statusOf(r) === statusFilter) &&
+      (!q || ['Company', 'Job Title', 'Location', 'Status', 'Sponsorship Signal', 'Source'].some((k) => String(r[k] || '').toLowerCase().includes(q))));
     const num = sortKey === 'Match Score';
-    rows.sort((a, b) => {
-      const av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
-      return (num ? (Number(av) || 0) - (Number(bv) || 0) : String(av).localeCompare(String(bv))) * sortDir;
-    });
+    rows.sort((a, b) => (num ? (Number(a[sortKey]) || 0) - (Number(b[sortKey]) || 0) : String(a[sortKey] ?? '').localeCompare(String(b[sortKey] ?? ''))) * sortDir);
     document.querySelectorAll('th').forEach((th) => th.removeAttribute('aria-sort'));
     const th = document.querySelector(`th button[data-k="${sortKey}"]`);
     if (th) th.parentElement.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
+    $('jobs-count').textContent = jobs.length ? `Showing ${fmt(rows.length)} of ${fmt(jobs.length)} jobs` : 'Every job the agents prepared';
     body.replaceChildren();
     empty.hidden = rows.length > 0;
-    empty.textContent = jobs.length ? 'No jobs match these filters.' : 'No jobs yet. They appear here after each run (7:43 AM and 5:43 PM Pacific).';
+    if (!rows.length) emptyBox(empty, jobs.length ? 'No jobs match these filters.' : 'No jobs yet. They appear here after each run (7:43 AM and 5:43 PM Pacific).', 'search');
     for (const r of rows) {
-      const tr = document.createElement('tr');
-      const td = (content, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; if (content instanceof Node) c.append(content); else c.textContent = content; tr.append(c); };
-      td(r['Date Found']);
-      td(r['Company'], 'co');
-      const u = safeUrl(r['Job Link']);
-      if (u) { const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; a.textContent = r['Job Title']; td(a, 'title'); } else td(r['Job Title'], 'title');
-      td(r['Location'], 'hide-sm');
-      const sc = document.createElement('span'); sc.className = 'score'; sc.textContent = r['Match Score']; sc.style.setProperty('--sc', scoreColor(Number(r['Match Score']) || 0)); td(sc);
-      td(r['Sponsorship Signal'], 'hide-sm');
-      const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = statusOf(r); pill.style.setProperty('--sc', STATUS_COLOR[statusOf(r)] || 'var(--c7)'); td(pill);
-      const acts = document.createElement('div'); acts.className = 'acts';
-      acts.append(btn('Apply ↗', r['Job Link'], 'var(--c0)'), btn('Resume', r['Tailored Resume Link'], 'var(--c1)'), btn('Outreach', r['Outreach Drafts Link'], 'var(--c4)'), btn('Folder', r['Company Folder'], 'var(--c7)'));
+      const tr = el('tr');
+      const td = (node, cls) => { const c = el('td', cls); if (node instanceof Node) c.append(node); else c.textContent = node ?? ''; tr.append(c); };
+      const co = el('div', 'co'); const av = el('span', 'avatar', String(r['Company'] || '?').trim().charAt(0).toUpperCase()); av.style.setProperty('--av', AVATAR[hash(r['Company']) % AVATAR.length]);
+      co.append(av, document.createTextNode(r['Company'] || '—')); td(co);
+      const role = el('div', 'role'); const u = safeUrl(r['Job Link']);
+      const t = el(u ? 'a' : 'span', null, r['Job Title']); if (u) { t.href = u; t.target = '_blank'; t.rel = 'noopener'; }
+      role.append(t, el('small', null, [r['Location'], r['Source']].filter(Boolean).join(' · '))); td(role);
+      const scv = Number(r['Match Score']) || 0;
+      const sc = el('span', 'score'); sc.style.setProperty('--sc', scoreColor(scv));
+      const bar = el('span', 'bar'); const fill = el('span'); fill.style.width = Math.max(0, Math.min(100, scv)) + '%'; bar.append(fill);
+      sc.append(document.createTextNode(r['Match Score'] || '—'), bar); td(sc);
+      td(el('span', 'spons', r['Sponsorship Signal'] || '—'), 'hide-sm');
+      const pill = el('span', 'pill'); pill.style.setProperty('--sc', sColor(statusOf(r))); pill.append(el('i'), document.createTextNode(statusOf(r))); td(pill);
+      td(r['Date Found'] ? fmtDay(r['Date Found']) : '—', 'hide-sm nowrap');
+      const acts = el('div', 'acts');
+      acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'), btn('', r['Company Folder'], 'folder'));
+      acts.lastChild.title = acts.lastChild.getAttribute('aria-disabled') ? acts.lastChild.title : 'Company folder';
       td(acts);
       body.append(tr);
     }
   }
 
+  function renderRuns() {
+    const box = $('runs');
+    if (!runs.length) return emptyBox(box, 'No runs yet. The first log appears after the next scheduled run.', 'clock');
+    box.replaceChildren();
+    for (const r of runs) {
+      const row = el('div', 'run');
+      const ic = el('span', 'kpi-icon'); ic.style.setProperty('--k', 'var(--brand-2)'); ic.append(icon('file', 'ic'));
+      const txt = el('div'); txt.append(el('b', null, r.title), el('small', null, r.created ? new Date(r.created).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Run log'));
+      row.append(ic, txt, btn('Open', r.link, 'external'));
+      box.append(row);
+    }
+  }
+
   function render() {
-    const { statusCounts, funnel, byDay, byCompany, g } = derive();
-    const today = (byDay.find((x) => x.date === todayPT()) || {}).prepared || 0;
-    $('t-today').textContent = fmt(today);
-    $('t-meter').style.width = Math.min(100, (today / C.DAILY_LIMIT) * 100) + '%';
-    $('t-ready').textContent = fmt(g('Ready to apply'));
-    $('t-applied').textContent = fmt(funnel[1].jobs);
-    $('t-int').textContent = fmt(funnel[2].jobs);
-    $('t-offer').textContent = fmt(funnel[3].jobs);
+    if ($('app').hidden) return;
+    $('sample-banner').hidden = !usingSample;
+    const D = derive();
+    const today = (D.byDay.find((x) => x.date === todayPT()) || {}).value || 0;
+    const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+    $('greet').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Prathma';
+    const ready = D.g('Ready to apply');
     $('take').textContent = jobs.length === 0
-      ? 'No jobs prepared yet. The agents fill this page after their next run.'
-      : `${fmt(g('Ready to apply'))} ${g('Ready to apply') === 1 ? 'job is' : 'jobs are'} ready to apply. ${fmt(today)} of ${C.DAILY_LIMIT} prepared today.`;
+      ? 'No jobs yet. The agents fill this in after their next run.'
+      : `${fmt(ready)} ${ready === 1 ? 'job is' : 'jobs are'} ready to apply, and ${fmt(today)} of ${C.DAILY_LIMIT} were prepared today.`;
 
-    const fc = ['var(--c0)', 'var(--c5)', 'var(--c3)', 'var(--c2)'];
-    hbars($('funnel'), funnel, 'stage', 'jobs', (r, i) => fc[i]);
-    const prep = funnel[0].jobs, app = funnel[1].jobs, int = funnel[2].jobs;
-    $('conv').textContent = prep ? `Applied to ${pct(app / prep)} of prepared jobs` + (app ? ` · ${pct(int / app)} of applications reached interviews` : '') : '';
+    $('k-today').textContent = fmt(today);
+    $('k-meter').style.width = Math.min(100, (today / C.DAILY_LIMIT) * 100) + '%';
+    $('k-ready').textContent = fmt(ready);
+    $('k-applied').textContent = fmt(D.funnel[1].value);
+    $('k-int').textContent = fmt(D.funnel[2].value);
+    $('k-offer').textContent = fmt(D.funnel[3].value);
+    $('k-int-sub').textContent = D.funnel[1].value ? `${pct(D.funnel[2].value / D.funnel[1].value)} of applications` : 'incl. offers';
+    $('k-applied-sub').textContent = D.funnel[0].value ? `${pct(D.funnel[1].value / D.funnel[0].value)} of prepared` : 'all time';
+    sparkline($('sp-ready'), D.byDay, cssVar('--s-ready'));
+    sparkline($('sp-applied'), D.appliedDays, cssVar('--s-applied'));
 
-    barChart($('daily'), byDay.slice(-14));
+    renderQueue();
+    donut($('donut'), $('legend'), D.statusCounts);
 
-    const comp = $('companies');
-    if (!byCompany.length) emptyBox(comp, 'No jobs prepared yet.');
-    else {
-      const box = document.createElement('div'); box.className = 'bars'; comp.replaceChildren(box);
-      const pal = ['--c0', '--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--c7'];
-      hbars(box, byCompany, 'company', 'jobs', (r, i) => `var(${pal[i % pal.length]})`, (r) => {
-        $('q').value = $('q').value === r.company ? '' : r.company; renderJobs();
-        $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    }
+    hbars($('funnel'), D.funnel, (r) => r.color);
+    const conv = $('conv'); conv.replaceChildren();
+    const p = D.funnel[0].value, a = D.funnel[1].value, i = D.funnel[2].value;
+    [[p ? pct(a / p) : '—', 'apply rate'], [a ? pct(i / a) : '—', 'interview rate'], [i ? pct(D.funnel[3].value / i) : '—', 'offer rate']].forEach(([v, l]) => { const d = el('div'); d.append(el('b', null, v), el('span', null, l)); conv.append(d); });
 
-    const re = $('runs');
-    if (!runs.length) emptyBox(re, 'No runs yet. The first log appears after the next scheduled run.');
-    else {
-      re.replaceChildren();
-      for (const r of runs) {
-        const line = document.createElement('div'); line.className = 'run';
-        const t = document.createElement('span'); t.textContent = r.title;
-        line.append(t, btn('Open log ↗', r.link, 'var(--c5)')); re.append(line);
-      }
-    }
-    renderChips(statusCounts);
+    barChart($('daily'), D.byDay.slice(-14).map((d) => ({ key: d.date, value: d.value })), { unit: 'prepared', ref: C.DAILY_LIMIT, xFmt: fmtDay, c1: cssVar('--brand'), c2: cssVar('--s-referral'), empty: 'No jobs prepared yet.' });
+    areaChart($('cumul'), D.cumul, { color: cssVar('--s-applied'), empty: 'Set Status and Date Applied in the tracker to see this grow.' });
+
+    const bins = [['<70', 0, 70], ['70s', 70, 80], ['80s', 80, 90], ['90+', 90, 101]].map(([key, lo, hi]) => ({ key, value: jobs.filter((r) => { const s = Number(r['Match Score']); return !isNaN(s) && s >= lo && s < hi; }).length }));
+    barChart($('scores'), jobs.length ? bins : [], { unit: 'jobs', c1: cssVar('--s-offer'), c2: cssVar('--brand-2'), empty: 'Scores appear once jobs are prepared.' });
+
+    const sponsColor = (r) => (/sponsor|transfer/i.test(r.label) && !/no |not sponsor|unable/i.test(r.label) ? 'var(--s-offer)' : /not stated|not recorded/i.test(r.label) ? 'var(--s-ready)' : 'var(--s-referral)');
+    hbars($('spons'), D.bySpons, sponsColor);
+    hbars($('companies'), D.byCompany, (r, i) => `var(${PALETTE[i % PALETTE.length]})`, (r) => { $('q').value = $('q').value === r.label ? '' : r.label; statusFilter = ''; render(); $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    hbars($('sources'), D.bySource, (r, i) => `var(${PALETTE[(i + 3) % PALETTE.length]})`);
+
+    renderChips(D.statusCounts);
     renderJobs();
+    renderRuns();
   }
 
   document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
@@ -298,7 +484,11 @@
     renderJobs();
   }));
   $('q').addEventListener('input', renderJobs);
-  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (lastLoaded) barChart($('daily'), derive().byDay.slice(-14)); }, 200); });
+  document.querySelectorAll('.nav a[href^="#"]').forEach((a) => a.addEventListener('click', () => {
+    document.querySelectorAll('.nav a[href^="#"]').forEach((x) => x.classList.toggle('on', x === a));
+  }));
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 200); });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
 
   initAuth();
 })();
