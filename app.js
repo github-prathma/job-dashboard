@@ -823,8 +823,11 @@
   form.elements.profile.addEventListener('change', () => { if (!fval('name')) { const n = nameFromProfileUrl(fval('profile')); if (n) form.elements.name.value = n; } });
   const guessRecipient = (headline) => (/recruit|talent|sourc|hiring partner/i.test(headline) ? 'recruiter' : /manager|director|head of|\bvp\b|lead\b/i.test(headline) ? 'manager' : 'engineer');
 
+  // LinkedIn puts an unread count in the tab title, e.g. "(1) Ameya Jajulwar | LinkedIn".
+  const cleanName = (s) => String(s).replace(/^\s*\(\d+\+?\)\s*/, '').split('|')[0].replace(/\s+/g, ' ').trim();
+
   function applyProfilePrefill(p) {
-    const name = (p.get('name') || '').trim(), headline = (p.get('headline') || '').trim(), degree = p.get('degree') || '';
+    const name = cleanName(p.get('name') || ''), headline = (p.get('headline') || '').trim(), degree = p.get('degree') || '';
     const profile = liUrl(p.get('profile') || '') || '';
     const job = getActiveJob();
     form.reset();
@@ -858,7 +861,7 @@
     const dash = location.origin + location.pathname;
     const code = `(()=>{if(!/linkedin\\.com\\/in\\//.test(location.href)){alert('Open a LinkedIn profile first, then click Draft with Job Agent.');return;}`
       + `const h=document.querySelector('main h1')||document.querySelector('h1');`
-      + `const name=((h&&h.innerText)||document.title.split('|')[0]).replace(/\\s+/g,' ').trim();`
+      + `const name=((h&&h.innerText)||document.title.split('|')[0]).replace(/^\\s*\\(\\d+\\+?\\)\\s*/,'').replace(/\\s+/g,' ').trim();`
       + `const card=(h&&(h.closest('section')||h.parentElement))||document.body;`
       + `const hd=card.querySelector('.text-body-medium');const headline=hd?hd.innerText.trim():'';`
       + `const m=card.innerText.slice(0,1200).match(/\\b(1st|2nd|3rd)\\b/);const degree=m?m[1].charAt(0):'';`
