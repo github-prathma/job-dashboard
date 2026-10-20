@@ -3,7 +3,7 @@
 // origins you list in Google Cloud (your GitHub Pages URL).
 window.JD_CONFIG = {
   // Paste your OAuth client ID here (ends with .apps.googleusercontent.com)
-  GOOGLE_CLIENT_ID: "PASTE_YOUR_CLIENT_ID.apps.googleusercontent.com",
+  GOOGLE_CLIENT_ID: "840617445937-r7e6ed2m9jomvo8tdshg47i2inbug3nh.apps.googleusercontent.com",
 
   // Google account that owns the files. Used as a sign-in hint only.
   GOOGLE_ACCOUNT_HINT: "prathma0909@gmail.com",
