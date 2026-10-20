@@ -5,6 +5,10 @@ window.JD_CONFIG = {
   // Paste your OAuth client ID here (ends with .apps.googleusercontent.com)
   GOOGLE_CLIENT_ID: "840617445937-r7e6ed2m9jomvo8tdshg47i2inbug3nh.apps.googleusercontent.com",
 
+  // Your first name (used in the greeting) and when your scheduled agent runs.
+  YOUR_NAME: "Prathma",
+  RUN_TIMES: { morning: "7:43 AM", evening: "5:43 PM", zone: "Pacific" },
+
   // Google account that owns the files. Used as a sign-in hint only.
   GOOGLE_ACCOUNT_HINT: "prathma0909@gmail.com",
 

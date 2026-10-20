@@ -208,8 +208,11 @@ window.JD_OUTREACH = (() => {
 
   // ---------- LinkedIn people searches (opened in your own signed-in browser) ----------
   // Intuit is left out of ex-colleague searches on purpose: current coworkers.
+  // Edit these to your own schools and past employers (quote names with spaces).
   const SCHOOLS = ['"Syracuse University"', '"IIIT Allahabad"', '"Indian Institute of Information Technology Allahabad"'];
   const PAST_EMPLOYERS = ['Visa', 'PayPal'];
+  const SCHOOLS_LABEL = 'Syracuse or IIIT Allahabad';
+  const EMPLOYERS_LABEL = 'Visa or PayPal';
   function peopleSearch(company, kind) {
     const base = 'https://www.linkedin.com/search/results/people/?';
     const c = String(company || '').trim();
@@ -226,8 +229,8 @@ window.JD_OUTREACH = (() => {
   const SEARCHES = [
     { kind: 'first', label: 'Your connections', hint: '1st-degree: ask for a referral' },
     { kind: 'second', label: '2nd-degree', hint: 'Ask a mutual connection for an intro' },
-    { kind: 'alumni', label: 'Alumni', hint: 'Syracuse or IIIT Allahabad' },
-    { kind: 'colleagues', label: 'Ex-colleagues', hint: 'Also worked at Visa or PayPal' },
+    { kind: 'alumni', label: 'Alumni', hint: SCHOOLS_LABEL },
+    { kind: 'colleagues', label: 'Ex-colleagues', hint: 'Also worked at ' + EMPLOYERS_LABEL },
   ];
 
   // ---------- Reading a job posting from its link ----------

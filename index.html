@@ -373,7 +373,7 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
         <span style="--c: var(--s-offer)"><i></i>Offer</span>
       </div>
     </div>
-    <div style="font-size:12px;color:var(--side-muted);position:relative;z-index:1">Runs at 7:43 AM and 5:43 PM Pacific</div>
+    <div id="gate-runs" style="font-size:12px;color:var(--side-muted);position:relative;z-index:1">Runs at 7:43 AM and 5:43 PM Pacific</div>
   </div>
   <div class="gate-side">
     <div class="gate-card">
@@ -416,8 +416,8 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
     </nav>
     <div class="sched">
       <b><svg class="ic sm"><use href="#i-clock"/></svg>Agent schedule</b>
-      <div class="row"><span>Morning run</span><span>7:43 AM</span></div>
-      <div class="row"><span>Evening run</span><span>5:43 PM</span></div>
+      <div class="row"><span>Morning run</span><span id="side-am">7:43 AM</span></div>
+      <div class="row"><span>Evening run</span><span id="side-pm">5:43 PM</span></div>
       <div class="row"><span>Daily limit</span><span id="side-limit">10 jobs</span></div>
     </div>
     <button class="out" id="signout" type="button"><svg class="ic"><use href="#i-logout"/></svg>Sign out</button>

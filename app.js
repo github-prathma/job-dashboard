@@ -1,5 +1,12 @@
 (() => {
   const C = window.JD_CONFIG;
+  const RT = C.RUN_TIMES || { morning: '7:43 AM', evening: '5:43 PM', zone: 'Pacific' };
+  const RUNS_TEXT = `${RT.morning} and ${RT.evening} ${RT.zone}`;
+  const fillRunTimes = () => {
+    const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    set('gate-runs', 'Runs at ' + RUNS_TEXT); set('side-am', RT.morning); set('side-pm', RT.evening);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fillRunTimes); else fillRunTimes();
   const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly';
   const $ = (id) => document.getElementById(id);
   const fmt = d3.format(',');
@@ -435,7 +442,7 @@
     $('jobs-count').textContent = jobs.length ? `Showing ${fmt(rows.length)} of ${fmt(jobs.length)} jobs` : 'Every job the agents prepared';
     body.replaceChildren();
     empty.hidden = rows.length > 0;
-    if (!rows.length) emptyBox(empty, jobs.length ? 'No jobs match these filters.' : 'No jobs yet. They appear here after each run (7:43 AM and 5:43 PM Pacific).', 'search');
+    if (!rows.length) emptyBox(empty, jobs.length ? 'No jobs match these filters.' : `No jobs yet. They appear here after each run (${RUNS_TEXT}).`, 'search');
     for (const r of rows) {
       const tr = el('tr');
       const td = (node, cls) => { const c = el('td', cls); if (node instanceof Node) c.append(node); else c.textContent = node ?? ''; tr.append(c); };
@@ -482,7 +489,7 @@
     const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
     const ready = D.g('Ready to apply');
     const P = PAGES[page];
-    $('greet').textContent = P.title || (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Prathma';
+    $('greet').textContent = P.title || (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (C.YOUR_NAME ? ', ' + C.YOUR_NAME : '');
     $('take').textContent = P.sub || (page === 'jobs'
       ? (jobs.length ? `${fmt(jobs.length)} jobs prepared · ${fmt(ready)} ready to apply` : 'Every job the agents prepare shows up here')
       : jobs.length === 0

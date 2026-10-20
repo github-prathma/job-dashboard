@@ -1,111 +1,178 @@
 # Job Search Command Center
 
-A private dashboard for the job search agents. The page itself is public on GitHub Pages, but it holds no data: you sign in with Google and it reads the tracker sheet and run logs straight from your Drive into your browser. Nothing is stored on GitHub.
+A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
-## What you need in Google Drive
+**Your data stays in your own Google Drive.** The website holds no data. When you sign in with Google, your browser reads your tracker sheet directly from Drive. The dashboard can only *read*; it can't change or delete anything.
 
-The dashboard reads two things live (a tracker sheet and a run-logs folder) and links to five more. All of them live in one Drive folder owned by the Google account you sign in with.
+**Nothing is sent for you.** The dashboard and the agents prepare everything; you apply and send messages yourself.
 
-### Folder layout
+---
+
+## How it works
 
 ```
-Job Agent/                              (any name; linked as "Job Agent folder")
-├── Job Application Tracker             Google Sheet   — READ by the dashboard
-├── Run Logs/                           Folder         — READ by the dashboard
-│   ├── Run 2026-10-20 07:43 PT         Google Docs written by the agents
-│   └── ...
-├── SEARCH CONFIG (edit me)             Google Doc     — linked only
-├── BASE RESUME - <your name>           Google Doc     — linked only
-├── Tailored Resumes/                   Folder         — linked only (one subfolder per company)
-└── Referral Outreach Drafts/           Folder         — linked only
+ Claude agents (run twice a day)          Your Google Drive                     This dashboard
+ ─────────────────────────────            ─────────────────                     ──────────────
+ 1. Find new job postings        ──►   Job Application Tracker (sheet)   ──►   Jobs, charts, "Next up"
+ 2. Tailor your resume per job   ──►   Tailored Resumes/<Company>/        ──►   Resume buttons
+ 3. Find people + draft messages ──►   Outreach tab + draft docs          ──►   Agent drafts page
+ 4. Write a run log              ──►   Run Logs/                          ──►   Files page
 ```
 
-"Linked only" items just need to exist so the buttons open them; the dashboard never reads their contents.
+You can use the dashboard without the agents too: type jobs into the sheet yourself and the dashboard still works.
 
-### 1. Tracker sheet (required)
+---
 
-A Google Sheet whose **first tab** has this header row in **row 1, columns A to P, in this exact order and spelling**:
+## Setup (about 30 minutes, once)
 
-| Col | Header | What goes in it |
+### Step 1. Copy this repo
+Click **Fork** at the top of this page on GitHub. You now have your own copy, e.g. `github.com/<you>/job-dashboard`.
+
+### Step 2. Set up your Google Drive
+Create one folder in Google Drive (for example "Job Agent") with these items inside:
+
+| Name | Type | What it's for |
 |---|---|---|
-| A | Date Found | `YYYY-MM-DD` (Pacific date). Store as text (type it with a leading `'`) so Sheets doesn't reformat it. Drives "Prepared today" and the per-day chart. |
-| B | Company | Company name. Drives "Top companies". |
-| C | Job Title | Role name; becomes the link to the posting. |
-| D | Location | Free text. |
-| E | Job Link | Full `https://` URL to the posting. Used by **Apply**. |
-| F | Source | Where it was found (Greenhouse, Ashby, LinkedIn…). |
-| G | Posted At | `YYYY-MM-DD HH:mm`, as text. |
-| H | Match Score | Plain number 0–100. Colored green at 85+, blue at 75+. |
-| I | Sponsorship Signal | e.g. `Not stated`, `Sponsors`. |
-| J | H-1B History | e.g. `Strong`, `Some`, `None found`. |
-| K | Tailored Resume Link | `https://` link to the tailored resume. Used by **Resume**. |
-| L | Company Folder | `https://` link to the company's resume folder. Used by **Folder**. |
-| M | Outreach Drafts Link | `https://` link to the outreach doc. Used by **Outreach**. |
-| N | Status | One of: `Ready to apply`, `Applied`, `Referral requested`, `Interviewing`, `Offer`, `Rejected`, `Skipped`. Blank counts as Ready to apply. A dropdown with these values is recommended (Data → Data validation). |
-| O | Date Applied | `YYYY-MM-DD` (yours to fill in). |
-| P | Missing Keywords / Notes | Free text. |
+| Job Application Tracker | Google Sheet | One row per job. **The dashboard reads this.** |
+| Run Logs | Folder | One Google Doc per agent run. **The dashboard lists these.** |
+| SEARCH CONFIG (edit me) | Google Doc | Your rules for the agents. Start from [`agent/search-config-template.md`](agent/search-config-template.md). |
+| BASE RESUME | Google Doc | Your resume. Update it any time; the agents always read the latest version. |
+| Tailored Resumes | Folder | The agents save one resume per job here, in a folder per company. |
+| Referral Outreach Drafts | Folder | The agents save outreach drafts here. |
 
-How the statuses roll up in the pipeline: **Applied** counts Applied, Referral requested, Interviewing, Offer and Rejected; **Interviewing** counts Interviewing and Offer; **Skipped** is left out of Prepared. Up to 999 job rows are read (range `A1:P1000`, set in `config.js`).
+**The tracker sheet.** In the first tab, type these 16 headers into row 1, columns A to P, exactly as written:
 
-Links that are empty or don't start with `https://` show as greyed-out buttons.
+```
+Date Found | Company | Job Title | Location | Job Link | Source | Posted At | Match Score | Sponsorship Signal | H-1B History | Tailored Resume Link | Company Folder | Outreach Drafts Link | Status | Date Applied | Missing Keywords / Notes
+```
 
-### 2. Run Logs folder (required)
+Tips:
+- **Dates** look like `2026-10-20`. Type a `'` first (`'2026-10-20`) so Sheets doesn't change the format.
+- **Match Score** is a number from 0 to 100.
+- **Links** must start with `https://`.
+- **Status** is one of: `Ready to apply`, `Applied`, `Referral requested`, `Interviewing`, `Offer`, `Rejected`, `Skipped`. Add a dropdown with these values (select column N → Data → Data validation). An empty status counts as Ready to apply.
 
-A Drive folder holding one **Google Doc** per agent run, titled starting with **`Run `** (capital R, then a space), e.g. `Run 2026-10-20 07:43 PT`. The dashboard lists the 8 newest by creation time. Other files in the folder (such as the agents' `seen-jobs` list) are ignored. An empty folder is fine; the card says no runs yet.
+**The Outreach tab (optional).** Add a second tab named exactly `Outreach` with these 13 headers in row 1:
 
-### 3. IDs and links in `config.js`
+```
+Date Drafted | Company | Job Title | Job Link | Person | Person Title | Relationship | Found Via | Profile URL | Message Type | Subject | Message | Draft ID
+```
 
-Copy each ID from the item's address bar:
+- Relationship is one of `Your connection`, `Recruiter`, `Hiring manager`, `Engineer`.
+- Message Type is one of `InMail`, `Connection note`, `Message`.
 
-| Setting | Comes from | Example URL → ID |
-|---|---|---|
-| `TRACKER_SHEET_ID` | the tracker sheet | `docs.google.com/spreadsheets/d/`**`1PUw…nhGM`**`/edit` |
-| `RUN_LOGS_FOLDER_ID` | the Run Logs folder | `drive.google.com/drive/folders/`**`1n6L…v0s`** |
-| `LINKS.*` | full URLs of the config doc, base resume, the two output folders, and the main folder | paste the whole URL |
-| `GOOGLE_ACCOUNT_HINT` | the email that owns (or can view) the files | `prathma0909@gmail.com` |
+Without this tab, the Agent drafts page is simply empty.
 
-### 4. Access
+### Step 3. Create a Google sign-in key (OAuth client ID)
+This lets the dashboard ask Google for permission to read your sheet. It's free.
 
-- Sign in with a Google account that **owns or can view** the tracker and the Run Logs folder. Any other account loads nothing and shows a "could not load data" message.
-- That account must be listed as a **Test user** on the OAuth consent screen (step 2 below) while the app is in Testing.
-- The dashboard asks only for read-only access: `spreadsheets.readonly` (to read the tracker) and `drive.metadata.readonly` (to list run-log titles and links, not their contents). It cannot edit or delete anything.
-- Nothing in Drive needs to be shared publicly or "published to the web".
+1. Go to https://console.cloud.google.com and create a project (any name, e.g. "Job Dashboard").
+2. **APIs & Services → Library**: turn on **Google Sheets API** and **Google Drive API**.
+3. **Google Auth Platform / OAuth consent screen**:
+   - Choose **External**. App name: "Job Dashboard". Use your email for the contact fields.
+   - Under **Audience → Test users**, add the Google account that owns your Drive folder.
+   - Leave the app in **Testing**. You'll see an "unverified app" warning when signing in. That's normal for a personal app; click **Continue**.
+4. **Credentials → Create credentials → OAuth client ID**:
+   - Application type: **Web application**.
+   - Authorized JavaScript origins: `https://<your-github-username>.github.io` (no path, no slash at the end).
+5. Copy the **Client ID** (it ends in `.apps.googleusercontent.com`).
 
-## One-time setup
+The client ID is not a password. Google only accepts it from the website address you entered above.
 
-### 1. Turn on GitHub Pages
-Repo **Settings → Pages → Build and deployment**: Source **Deploy from a branch**, Branch **main**, folder **/ (root)**. Your site will be at https://github-prathma.github.io/job-dashboard/.
+### Step 4. Fill in `config.js`
+Open `config.js` in your fork (click the file, then the pencil icon) and change:
 
-### 2. Create a Google OAuth client ID (about 10 minutes)
-Sign in to https://console.cloud.google.com with any Google account (it does not have to be the one that owns the files).
+| Setting | What to put |
+|---|---|
+| `GOOGLE_CLIENT_ID` | The Client ID from step 3 |
+| `YOUR_NAME` | Your first name, for the greeting |
+| `RUN_TIMES` | When your agents run (only shown as text) |
+| `GOOGLE_ACCOUNT_HINT` | The Google email that owns your Drive folder |
+| `TRACKER_SHEET_ID` | The long ID in the sheet's address: `docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit` |
+| `RUN_LOGS_FOLDER_ID` | The ID in the Run Logs folder's address: `drive.google.com/drive/folders/`**`THIS_PART`** |
+| `LINKS` | Full web addresses of your config doc, resume, the two output folders and the main folder |
+| `DAILY_LIMIT`, `INMAIL_DAILY_LIMIT` | Jobs per day and LinkedIn InMails per day (used for progress bars) |
 
-1. Create a project, for example "Job Dashboard".
-2. **APIs & Services → Library**: enable **Google Sheets API** and **Google Drive API**.
-3. **APIs & Services → OAuth consent screen** (Google Auth Platform):
-   - User type **External**, app name "Job Dashboard", your email as support and developer contact.
-   - Data access / scopes: add `.../auth/spreadsheets.readonly` and `.../auth/drive.metadata.readonly`.
-   - Audience → **Test users**: add `prathma0909@gmail.com` (the account that owns the tracker).
-   - Leave the app in **Testing**. You will see an "unverified app" notice when signing in; that is expected for a personal app.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
-   - Application type **Web application**.
-   - Authorized JavaScript origins: `https://github-prathma.github.io` (no path, no trailing slash).
-5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`) into `config.js` → `GOOGLE_CLIENT_ID`.
+Click **Commit changes** to save.
 
-The client ID is not a secret: Google only honors it from the origins you listed.
+### Step 5. Make the LinkedIn messages sound like you (`outreach.js`)
+The message writer only uses facts you put in this file, so it never makes things up. Edit:
+- `ME`: your name, a one-line pitch, and (optional) a work-authorization line that's only used for recruiters. If you don't need one, set `sponsorship` and `shortSponsorship` to `''`.
+- `HIGHLIGHTS`: 4–8 true achievements from your resume, each with keywords. The writer picks the ones that best match the job.
+- `SCHOOLS`, `PAST_EMPLOYERS` and their labels: used by the "Alumni" and "Ex-colleagues" search buttons.
 
-## Using it
-- Open the site and click **Sign in with Google**, choosing `prathma0909@gmail.com`.
-- Data loads live from the tracker. It refreshes every 5 minutes while the tab is open, when you come back to the tab, and when you click **Refresh data**.
-- Before the first agent run, use **Preview with sample data** (in the Next up card) to see the layout with made-up jobs. A banner marks sample mode; **Show my data** switches back.
-- **LinkedIn outreach** page: enter a person, company and job title, choose InMail or Connection note, and get two drafts to edit and copy. Paste the job link (Greenhouse, Lever or Ashby) or the job description and the drafts name skills from the posting that are also on your resume. Connection notes are kept within LinkedIn's 300-character limit, and a counter tracks your 5 InMails a day. The **Message** button on any row in All jobs opens this page prefilled. The sent log lives in your browser only.
-- **Find people**: every job has buttons that open LinkedIn's own search in your signed-in browser, filtered to your 1st-degree connections, 2nd-degree connections, alumni (Syracuse, IIIT Allahabad) and ex-colleagues (Visa, PayPal) at that company. Results are always current; nothing is read or stored. On the LinkedIn outreach page, choose **Message** for people you're connected to, or **Mutual connection (ask for an intro)** to ask a 1st-degree contact to introduce you to someone at the company.
-- **Draft with Job Agent** bookmarklet: drag it from the LinkedIn outreach page to your bookmarks bar. After choosing a job (any Find people button), open someone's LinkedIn profile and click it: the composer opens with their name, profile link, the job, who they are (from their headline) and the message type (Message for 1st-degree connections) filled in. It reads only the profile you're viewing, only when you click it. Pasting just a profile link also fills in the name.
-- **Agent drafts** page: every person the agents found for each job, grouped by job, with a badge for 1st-degree connection, recruiter or hiring manager. Copy the message, open their profile, and mark it sent (InMails count toward the daily 5). Filter to **Your connections** for referral asks. Drafts come from the tracker's **Outreach** tab, which the agents fill after each run; sent marks are kept in this browser.
-- To change a status, edit the tracker sheet (the Status column has a dropdown). The dashboard is read-only.
-- Sign-in lasts about an hour per tab; after that Google asks again silently or with one click.
+### Step 6. Publish it with GitHub Pages
+In your fork: **Settings → Pages**. Under **Build and deployment** choose **Deploy from a branch**, branch **main**, folder **/ (root)**, then **Save**. After a minute your dashboard is at:
 
-## Files
-- `index.html` – layout and styles
-- `app.js` – Google sign-in, data loading and charts
-- `config.js` – client ID, file IDs, links and limits (edit this to change settings)
-- `outreach.js` – LinkedIn message wording and the resume facts it draws from (edit to change tone or add highlights)
+`https://<your-github-username>.github.io/job-dashboard/`
+
+Open it and click **Sign in with Google**. Before you have any data, click **Preview with sample data** to see how it looks.
+
+### Step 7 (optional). Set up the agents
+The agents run in [Claude](https://claude.ai) as a **scheduled task** and need the Google Drive, Google Docs and Google Sheets connectors turned on.
+
+1. Open [`agent/agent-prompt.md`](agent/agent-prompt.md) and replace every `<...>` placeholder with your name and your Drive IDs (same IDs as step 4, plus your config doc, resume and folders).
+2. In Claude, ask it to create a scheduled task that runs twice a day with that prompt, or paste the prompt into a new scheduled task yourself.
+3. After the first run, refresh the dashboard: new jobs, resumes and drafts appear.
+
+---
+
+## Using the dashboard every day
+
+| Page | What you do there |
+|---|---|
+| **Overview** | See today's numbers and **Next up**: the best jobs to apply to now, with buttons for Apply, Resume, Outreach and Connections. |
+| **Analytics** | Charts: your funnel (prepared → applied → interviewing → offer), jobs per day, match scores, top companies, sources. |
+| **All jobs** | Search and filter every job. Each row has Apply, Resume, Folder and People buttons. |
+| **LinkedIn outreach** | Write a message: enter the person, company and job, pick **InMail**, **Connection note** (300 characters max) or **Message**, then click **Draft messages**. Paste the job link (Greenhouse, Lever or Ashby) and the drafts mention skills from that job that are also in your resume. |
+| **Agent drafts** | Messages the agents prepared, grouped by job. Copy, open the person's profile, send it on LinkedIn, then click **Mark as sent**. |
+| **Files and runs** | Recent run logs and links to your Drive files. |
+
+**To update a job's status,** change the Status column in the sheet. The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**.
+
+### Finding people to ask for referrals
+Every job has **Find people** buttons that open LinkedIn's own search in your browser, filtered to people **currently at that company** and **in the US**:
+- **Your connections** (1st-degree): ask for a referral directly.
+- **2nd-degree**: ask a mutual connection to introduce you.
+- **Alumni**: people from your schools.
+- **Ex-colleagues**: people who worked where you did.
+
+If someone from a similarly named company shows up, click **Current company** on LinkedIn and pick the exact company page.
+
+### One-click drafting from a LinkedIn profile (bookmarklet)
+1. On the **LinkedIn outreach** page, drag the **Draft with Job Agent** button to your browser's bookmarks bar (in Chrome, show the bar with Cmd+Shift+B or Ctrl+Shift+B).
+2. On the dashboard, click any **Find people** button for a job. The dashboard remembers that job.
+3. Open someone's LinkedIn profile and click the bookmark. The message page opens with their name, profile link, the job, their role and the right message type already filled in.
+
+It only reads the profile you're looking at, and only when you click it. It works in desktop browsers, not on phones. Keep the dashboard tab open so you stay signed in.
+
+---
+
+## Common questions
+
+**"Could not load data" after signing in.**
+You signed in with an account that can't open the tracker, or the IDs in `config.js` are wrong. Use the account that owns the Drive folder and check that it's a Test user (step 3).
+
+**"Access blocked" or "redirect/origin mismatch" from Google.**
+The JavaScript origin in step 3 must be exactly `https://<your-github-username>.github.io`, with no path and no slash at the end.
+
+**My changes don't show up.**
+GitHub Pages takes about a minute after a commit. Then hard-refresh (Cmd+Shift+R or Ctrl+Shift+R).
+
+**What's saved in my browser?**
+Only small conveniences: which drafts you marked sent, your sent-message log, and the job you picked last. Clearing site data resets them. Your sign-in lasts about an hour.
+
+**Is my data public?**
+No. The website code is public, but it holds no data. Only someone who signs in with an account that can open your sheet sees anything.
+
+---
+
+## Files in this repo
+| File | What it is |
+|---|---|
+| `index.html` | The page layout and styles |
+| `app.js` | Sign-in, loading data, charts, and the pages |
+| `config.js` | **Your settings**: client ID, sheet and folder IDs, links, limits |
+| `outreach.js` | **Your message facts**: pitch, highlights, schools, past employers |
+| `agent/agent-prompt.md` | Prompt for the scheduled Claude agents (fill in the placeholders) |
+| `agent/search-config-template.md` | Starting point for your SEARCH CONFIG doc |
