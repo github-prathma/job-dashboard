@@ -38,8 +38,7 @@
   }
   function showApp() {
     $('gate').hidden = true; $('app').hidden = false;
-    const m = $('main'); m.classList.remove('enter'); void m.offsetWidth; m.classList.add('enter');
-    render();
+    route();
   }
   function clearToken() { token = null; tokenExpiry = 0; try { sessionStorage.removeItem('jd_tok'); } catch (e) {} }
   function showGateError(msg) { if ($('app').hidden) showGate('signin', msg); else $('app-err').textContent = msg; }
@@ -336,12 +335,31 @@
     }
   }
 
-  function filterStatus(s) {
-    statusFilter = statusFilter === s ? '' : s;
+  // ---------- Pages ----------
+  const PAGES = {
+    overview: { title: null, sub: null },
+    analytics: { title: 'Analytics', sub: 'How your search is converting, and where the jobs come from' },
+    jobs: { title: 'All jobs', sub: null },
+    files: { title: 'Files and runs', sub: 'Agent run logs and the Drive files the agents use' },
+  };
+  let page = 'overview';
+  const pageFromHash = () => { const k = (location.hash || '').replace(/^#\/?/, ''); return PAGES[k] ? k : 'overview'; };
+  function go(name) { if (location.hash !== '#/' + name) location.hash = '#/' + name; else route(); }
+  function route() {
+    page = pageFromHash();
+    document.querySelectorAll('.page').forEach((pg) => {
+      const on = pg.dataset.page === page;
+      pg.hidden = !on;
+      if (on) { pg.classList.remove('enter'); void pg.offsetWidth; pg.classList.add('enter'); }
+    });
+    document.querySelectorAll('.nav a[data-page]').forEach((a) => { a.classList.toggle('on', a.dataset.page === page); if (a.dataset.page === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    window.scrollTo(0, 0);
     render();
-    $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  $('see-ready').addEventListener('click', () => { statusFilter = 'Ready to apply'; $('q').value = ''; render(); $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  window.addEventListener('hashchange', () => { if (!$('app').hidden) route(); });
+
+  function filterStatus(s) { statusFilter = s; $('q').value = ''; go('jobs'); }
+  $('see-ready').addEventListener('click', () => filterStatus('Ready to apply'));
 
   // ---------- Sections ----------
   function renderQueue() {
@@ -438,11 +456,15 @@
     const D = derive();
     const today = (D.byDay.find((x) => x.date === todayPT()) || {}).value || 0;
     const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
-    $('greet').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Prathma';
     const ready = D.g('Ready to apply');
-    $('take').textContent = jobs.length === 0
-      ? 'No jobs yet. The agents fill this in after their next run.'
-      : `${fmt(ready)} ${ready === 1 ? 'job is' : 'jobs are'} ready to apply, and ${fmt(today)} of ${C.DAILY_LIMIT} were prepared today.`;
+    const P = PAGES[page];
+    $('greet').textContent = P.title || (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Prathma';
+    $('take').textContent = P.sub || (page === 'jobs'
+      ? (jobs.length ? `${fmt(jobs.length)} jobs prepared · ${fmt(ready)} ready to apply` : 'Every job the agents prepare shows up here')
+      : jobs.length === 0
+        ? 'No jobs yet. The agents fill this in after their next run.'
+        : `${fmt(ready)} ${ready === 1 ? 'job is' : 'jobs are'} ready to apply, and ${fmt(today)} of ${C.DAILY_LIMIT} were prepared today.`);
+    const nb = $('nav-ready'); nb.hidden = !ready; nb.textContent = fmt(ready); nb.title = ready + ' ready to apply';
 
     $('k-today').textContent = fmt(today);
     $('k-meter').style.width = Math.min(100, (today / C.DAILY_LIMIT) * 100) + '%';
@@ -471,7 +493,7 @@
 
     const sponsColor = (r) => (/sponsor|transfer/i.test(r.label) && !/no |not sponsor|unable/i.test(r.label) ? 'var(--s-offer)' : /not stated|not recorded/i.test(r.label) ? 'var(--s-ready)' : 'var(--s-referral)');
     hbars($('spons'), D.bySpons, sponsColor);
-    hbars($('companies'), D.byCompany, (r, i) => `var(${PALETTE[i % PALETTE.length]})`, (r) => { $('q').value = $('q').value === r.label ? '' : r.label; statusFilter = ''; render(); $('jobs').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    hbars($('companies'), D.byCompany, (r, i) => `var(${PALETTE[i % PALETTE.length]})`, (r) => { statusFilter = ''; $('q').value = r.label; go('jobs'); });
     hbars($('sources'), D.bySource, (r, i) => `var(${PALETTE[(i + 3) % PALETTE.length]})`);
 
     renderChips(D.statusCounts);
@@ -484,9 +506,6 @@
     renderJobs();
   }));
   $('q').addEventListener('input', renderJobs);
-  document.querySelectorAll('.nav a[href^="#"]').forEach((a) => a.addEventListener('click', () => {
-    document.querySelectorAll('.nav a[href^="#"]').forEach((x) => x.classList.toggle('on', x === a));
-  }));
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 200); });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
 

@@ -68,6 +68,8 @@ a { color: inherit; }
 .nav { display: grid; gap: 2px; }
 .nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; text-decoration: none; font-weight: 600; color: var(--side-text); }
 .nav a:hover, .nav a.on { background: var(--side-2); color: #fff; }
+.nav-badge { margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; text-align: center; background: var(--s-ready); color: #1f1300; }
+.page { display: grid; gap: 22px; align-content: start; min-width: 0; }
 .nav-sub { font-size: 12px; color: var(--side-muted); padding: 0 10px; margin-top: 4px; }
 .sched { margin-top: auto; background: var(--side-2); border-radius: var(--r-md); padding: 14px; font-size: 13px; }
 .sched b { color: #fff; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -94,6 +96,7 @@ a { color: inherit; }
   background: color-mix(in srgb, var(--s-ready) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--s-ready) 40%, var(--line)); color: var(--text); }
 .banner button { margin-left: auto; }
 .app-err { color: var(--bad); font-size: 13px; }
+.app-err:empty { display: none; }
 
 /* ---------- Widgets ---------- */
 .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
@@ -223,9 +226,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
   .links { grid-template-columns: 1fr; } .hide-sm { display: none; } .q { grid-template-columns: 46px minmax(0, 1fr); } .q-acts { grid-column: 1 / -1; justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .main.enter > * { animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
-  .main.enter > *:nth-child(2) { animation-delay: .04s; } .main.enter > *:nth-child(3) { animation-delay: .08s; } .main.enter > *:nth-child(4) { animation-delay: .12s; }
-  .main.enter > *:nth-child(5) { animation-delay: .16s; } .main.enter > *:nth-child(6) { animation-delay: .2s; } .main.enter > *:nth-child(7) { animation-delay: .24s; }
+  .page.enter > * { animation: rise .45s cubic-bezier(.2,.7,.2,1) both; }
+  .page.enter > *:nth-child(2) { animation-delay: .06s; } .page.enter > *:nth-child(3) { animation-delay: .12s; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
 </style>
@@ -306,10 +308,10 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
   <aside class="side">
     <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
     <nav class="nav">
-      <a href="#overview" class="on"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
-      <a href="#analytics"><svg class="ic"><use href="#i-bars"/></svg>Analytics</a>
-      <a href="#jobs"><svg class="ic"><use href="#i-list"/></svg>All jobs</a>
-      <a href="#resources"><svg class="ic"><use href="#i-folder"/></svg>Files and runs</a>
+      <a href="#/overview" data-page="overview" class="on"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
+      <a href="#/analytics" data-page="analytics"><svg class="ic"><use href="#i-bars"/></svg>Analytics</a>
+      <a href="#/jobs" data-page="jobs"><svg class="ic"><use href="#i-list"/></svg>All jobs<span class="nav-badge" id="nav-ready" hidden></span></a>
+      <a href="#/files" data-page="files"><svg class="ic"><use href="#i-folder"/></svg>Files and runs</a>
     </nav>
     <div class="nav-sub">Edit</div>
     <nav class="nav">
@@ -327,7 +329,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
   </aside>
 
   <main class="main" id="main">
-    <div class="top" id="overview">
+    <div class="top">
       <div>
         <h1 id="greet">Overview</h1>
         <div class="sub" id="take">Loading…</div>
@@ -346,6 +348,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
     </div>
     <div class="app-err" id="app-err"></div>
 
+    <div class="page" data-page="overview">
     <section class="kpis">
       <div class="kpi" style="--k: var(--brand)">
         <div class="kpi-head"><span class="kpi-icon"><svg class="ic"><use href="#i-zap"/></svg></span>Prepared today</div>
@@ -383,12 +386,15 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
         <div class="queue" id="queue"></div>
       </div>
       <div class="w">
-        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-referral)"><svg class="ic"><use href="#i-pie"/></svg></span><div><h2>Status breakdown</h2><p class="hint">Click a status to filter the jobs table</p></div></div></div>
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-referral)"><svg class="ic"><use href="#i-pie"/></svg></span><div><h2>Status breakdown</h2><p class="hint">Click a status to see those jobs</p></div></div></div>
         <div class="donut-wrap"><div class="chart" id="donut" style="min-height:170px"></div><div class="legend" id="legend"></div></div>
       </div>
     </section>
 
-    <section class="row b" id="analytics">
+    </div>
+
+    <div class="page" data-page="analytics" hidden>
+    <section class="row b">
       <div class="w">
         <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-interview)"><svg class="ic"><use href="#i-funnel"/></svg></span><div><h2>Pipeline</h2><p class="hint">Jobs that reached each stage</p></div></div></div>
         <div class="hbars" id="funnel"></div>
@@ -414,7 +420,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
         <div class="hbars" id="spons"></div>
       </div>
       <div class="w">
-        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-rejected)"><svg class="ic"><use href="#i-building"/></svg></span><div><h2>Top companies</h2><p class="hint">Click one to filter the table</p></div></div></div>
+        <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-rejected)"><svg class="ic"><use href="#i-building"/></svg></span><div><h2>Top companies</h2><p class="hint">Click one to see its jobs</p></div></div></div>
         <div class="hbars" id="companies"></div>
       </div>
       <div class="w">
@@ -423,6 +429,9 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
       </div>
     </section>
 
+    </div>
+
+    <div class="page" data-page="jobs" hidden>
     <section class="w" id="jobs">
       <div class="w-head">
         <div class="w-title"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-list"/></svg></span><div><h2>All jobs</h2><p class="hint" id="jobs-count">Every job the agents prepared</p></div></div>
@@ -449,7 +458,10 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
       </div>
     </section>
 
-    <section class="row d" id="resources">
+    </div>
+
+    <div class="page" data-page="files" hidden>
+    <section class="row d">
       <div class="w">
         <div class="w-head">
           <div class="w-title"><span class="kpi-icon" style="--k: var(--brand-2)"><svg class="ic"><use href="#i-clock"/></svg></span><div><h2>Recent runs</h2><p class="hint">What each run searched, skipped and prepared</p></div></div>
@@ -469,6 +481,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
         </div>
       </div>
     </section>
+    </div>
   </main>
 </div>
 
