@@ -6,7 +6,9 @@ window.JD_OUTREACH = (() => {
     name: 'Prathma',
     pitch: 'a Sr. Software Engineer with 7+ years in fintech (Intuit, PayPal, Visa)',
     shortPitch: 'fintech engineer (Intuit, PayPal, Visa)',
-    sponsorship: "I'd need an H-1B transfer.",
+    // Work authorization, used only in messages to recruiters.
+    sponsorship: "I'm currently pursuing an executive doctorate, which authorizes me to work full-time through Curricular Practical Training (CPT) for up to four years. Would your team be able to support CPT authorization for this role? I would also need H-1B sponsorship.",
+    shortSponsorship: "I'm on CPT through my doctoral program and would need H-1B sponsorship.",
   };
 
   // Highlights from the resume, matched to a role by keywords.
@@ -92,11 +94,18 @@ window.JD_OUTREACH = (() => {
     const rel2 = fx2 ? ` Its focus on ${fx2} matches my work.` : '';
     const by = {
       recruiter: [
-        [`Hi ${n}, I'm interested in the ${r} role at ${c}.${rel} I'm a ${ME.shortPitch} and ${h.short}. Would love to connect!`,
+        [`Hi ${n}, I'm interested in the ${r} role at ${c}.${rel} I'm a ${ME.shortPitch} and ${h.short}. ${ME.shortSponsorship} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel2} I ${h.short}. ${ME.shortSponsorship} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}. I'm a ${ME.shortPitch}. ${ME.shortSponsorship} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}. ${ME.shortSponsorship} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel} I'm a ${ME.shortPitch} and ${h.short}. Would love to connect!`,
          `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel2} I ${h.short}. Would love to connect!`,
          `Hi ${n}, I'm interested in the ${r} role at ${c}. I'm a ${ME.shortPitch} and ${h.short}. Would love to connect!`,
          `Hi ${n}, I'm interested in ${r} at ${c} and would love to connect!`],
-        [`Hi ${n}, I'm applying for ${r} at ${c}.${rel} I'm a ${ME.shortPitch} and would love to connect.`,
+        [`Hi ${n}, I'm applying for ${r} at ${c}.${rel} I'm a ${ME.shortPitch}. ${ME.shortSponsorship} Would love to connect.`,
+         `Hi ${n}, I'm applying for ${r} at ${c}. I'm a ${ME.shortPitch}. ${ME.shortSponsorship} Would love to connect.`,
+         `Hi ${n}, I'm applying for ${r} at ${c}. ${ME.shortSponsorship} Would love to connect!`,
+         `Hi ${n}, I'm applying for ${r} at ${c}.${rel} I'm a ${ME.shortPitch} and would love to connect.`,
          `Hi ${n}, I'm applying for ${r} at ${c} and would love to connect. I'm a ${ME.shortPitch}.`,
          `Hi ${n}, I'm applying for ${r} at ${c} and would love to connect!`],
       ],
@@ -145,9 +154,9 @@ window.JD_OUTREACH = (() => {
     const sets = {
       recruiter: [
         { subject: `${r} at ${c}`,
-          body: `Hi ${n},\n\nI'm ${ME.pitch}, and I just applied for the ${r} role${team} at ${c}${link}.${rel} A recent highlight: I ${h.long}.\n\n${ME.sponsorship} Would you be the right person to talk to about this role?${sign}` },
+          body: `Hi ${n},\n\nI'm ${ME.pitch}, and I just applied for the ${r} role${team} at ${c}${link}.${rel} A recent highlight: I ${h.long}.\n\n${ME.sponsorship}\n\nWould you be the right person to talk to about this role?${sign}` },
         { subject: `Interested in ${shortRole(r)} at ${c}`,
-          body: `Hi ${n},\n\nI came across the ${r} opening${team} at ${c}${link} and it lines up closely with my background in ${h.area}.${rel} For example, I ${h.long}.\n\n${ME.sponsorship} ${asks.consider}${sign}` },
+          body: `Hi ${n},\n\nI came across the ${r} opening${team} at ${c}${link} and it lines up closely with my background in ${h.area}.${rel} For example, I ${h.long}.\n\n${ME.sponsorship}\n\n${asks.consider}${sign}` },
       ],
       manager: [
         { subject: `${shortRole(r)} on your team`,
