@@ -214,7 +214,8 @@ window.JD_OUTREACH = (() => {
     const base = 'https://www.linkedin.com/search/results/people/?';
     const c = String(company || '').trim();
     const q = c.includes(' ') ? `"${c}"` : c;
-    const params = { origin: 'FACETED_SEARCH' };
+    // geoUrn 103644278 is LinkedIn's filter for people located in the United States.
+    const params = { origin: 'FACETED_SEARCH', geoUrn: '["103644278"]' };
     if (kind === 'first') { params.keywords = c; params.network = '["F"]'; }
     else if (kind === 'second') { params.keywords = c; params.network = '["S"]'; }
     else if (kind === 'alumni') params.keywords = `${q} AND (${SCHOOLS.join(' OR ')})`;
