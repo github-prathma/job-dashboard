@@ -7,8 +7,8 @@ window.JD_OUTREACH = (() => {
     pitch: 'a Sr. Software Engineer with 7+ years in fintech (Intuit, PayPal, Visa)',
     shortPitch: 'fintech engineer (Intuit, PayPal, Visa)',
     // Work authorization, used only in messages to recruiters.
-    sponsorship: "I'm currently pursuing an executive doctorate, which authorizes me to work full-time through Curricular Practical Training (CPT) for up to four years. Would your team be able to support CPT authorization for this role? I would also need H-1B sponsorship.",
-    shortSponsorship: "I'm on CPT through my doctoral program and would need H-1B sponsorship.",
+    sponsorship: "I'm currently pursuing an executive doctorate, which authorizes me to work full-time valid for four years. I would need H-1B sponsorship.",
+    shortSponsorship: "My doctoral program authorizes me to work full-time for four years; I'd need H-1B sponsorship.",
   };
 
   // Highlights from the resume, matched to a role by keywords.
