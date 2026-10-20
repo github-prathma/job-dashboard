@@ -1,5 +1,7 @@
 # Job Search Command Center
 
+**Live demo:** https://github-prathma.github.io/job-dashboard/ (sign-in only works for accounts added as test users; click **Preview with sample data** after signing in to see the layout).
+
 A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
 **Your data stays in your own Google Drive.** The website holds no data. When you sign in with Google, your browser reads your tracker sheet directly from Drive. The dashboard can only *read*; it can't change or delete anything.
