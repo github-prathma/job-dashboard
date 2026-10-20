@@ -359,7 +359,8 @@
     files: { title: 'Files and runs', sub: 'Agent run logs and the Drive files the agents use' },
   };
   let page = 'overview';
-  const pageFromHash = () => { const k = (location.hash || '').replace(/^#\/?/, ''); return PAGES[k] ? k : 'overview'; };
+  const pageFromHash = () => { const k = (location.hash || '').replace(/^#\/?/, '').split('?')[0]; return PAGES[k] ? k : 'overview'; };
+  const hashParams = () => { const h = location.hash || ''; const i = h.indexOf('?'); return i < 0 ? null : new URLSearchParams(h.slice(i + 1)); };
   function go(name) { if (location.hash !== '#/' + name) location.hash = '#/' + name; else route(); }
   function route() {
     page = pageFromHash();
@@ -371,6 +372,8 @@
     document.querySelectorAll('.nav a[data-page]').forEach((a) => { a.classList.toggle('on', a.dataset.page === page); if (a.dataset.page === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     window.scrollTo(0, 0);
     render();
+    const params = hashParams();
+    if (params && page === 'linkedin') { history.replaceState(null, '', location.pathname + location.search + '#/linkedin'); applyProfilePrefill(params); }
   }
   window.addEventListener('hashchange', () => { if (!$('app').hidden) route(); });
 
@@ -401,6 +404,7 @@
       acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'));
       acts.firstChild.classList.add('primary');
       const cn = el('a', 'btn sm'); cn.style.setProperty('--b', 'var(--s-offer)'); cn.href = window.JD_OUTREACH.peopleSearch(r['Company'], 'first'); cn.target = '_blank'; cn.rel = 'noopener'; cn.title = 'Your 1st-degree connections at ' + r['Company'];
+      cn.addEventListener('click', () => setActiveJob(jobOf(r)));
       cn.append(icon('users'), document.createTextNode('Connections')); acts.append(cn);
       q.append(s, main, acts); box.append(q);
     }
@@ -536,13 +540,18 @@
 
   const FIND_COLOR = { first: 'var(--s-offer)', second: 'var(--s-interview)', alumni: 'var(--s-ready)', colleagues: 'var(--brand-2)' };
   const FIND_ICON = { first: 'users', second: 'user-plus', alumni: 'award', colleagues: 'briefcase' };
-  function findButtons(company, small) {
+  const JOB_KEY = 'jd_active_job';
+  const setActiveJob = (j) => { if (!j || !j.company) return; try { localStorage.setItem(JOB_KEY, JSON.stringify({ company: j.company, role: j.role || '', link: j.link || '', at: Date.now() })); } catch (e) {} };
+  const getActiveJob = () => { try { return JSON.parse(localStorage.getItem(JOB_KEY) || 'null'); } catch (e) { return null; } };
+  const jobOf = (r) => ({ company: r['Company'] || '', role: r['Job Title'] || '', link: safeUrl(r['Job Link']) || '' });
+  function findButtons(company, small, job) {
     const frag = document.createDocumentFragment();
     for (const s of window.JD_OUTREACH.SEARCHES) {
       const a = el('a', small ? 'btn sm' : 'find-btn');
       a.style.setProperty(small ? '--b' : '--fc', FIND_COLOR[s.kind]);
       a.target = '_blank'; a.rel = 'noopener';
       if (company) a.href = window.JD_OUTREACH.peopleSearch(company, s.kind); else a.setAttribute('aria-disabled', 'true');
+      a.addEventListener('click', () => setActiveJob(job || { company, role: fval('role'), link: safeUrl(fval('link')) || '' }));
       a.title = s.hint;
       if (small) a.append(icon(FIND_ICON[s.kind]), document.createTextNode(s.label));
       else { const b = el('b'); b.append(icon(FIND_ICON[s.kind]), document.createTextNode(s.label + ' ↗')); a.append(b, el('small', null, s.hint)); }
@@ -743,7 +752,7 @@
       const write = el('button', 'btn sm'); write.type = 'button'; write.append(icon('pen'), document.createTextNode('Write a message'));
       write.addEventListener('click', () => prefillOutreach(j)); write.style.marginLeft = 'auto';
       head.append(av, ht, write); grp.append(head);
-      const fr = el('div', 'ad-find'); fr.append(findButtons(j['Company'], true)); grp.append(fr);
+      const fr = el('div', 'ad-find'); fr.append(findButtons(j['Company'], true, jobOf(j))); grp.append(fr);
       const cards = el('div', 'ad-cards');
       for (const d of g) cards.append(draftCard(d, sent));
       grp.append(cards); box.append(grp);
@@ -792,6 +801,7 @@
   $('ad-hide-sent').addEventListener('change', (e) => { hideSent = e.target.checked; renderAgentDrafts(); });
 
   function prefillOutreach(r) {
+    setActiveJob(jobOf(r));
     form.reset();
     setTimeout(() => {
       form.elements.company.value = r['Company'] || '';
@@ -803,6 +813,61 @@
       setTimeout(() => form.elements.name.focus(), 50);
     }, 0);
   }
+
+  // ---------- Filling the composer from a LinkedIn profile ----------
+  const nameFromProfileUrl = (u) => {
+    const m = String(u || '').match(/linkedin\.com\/in\/([^/?#]+)/i); if (!m) return '';
+    const parts = decodeURIComponent(m[1]).split('-').filter((w) => /^[a-z]+$/i.test(w) && w.length > 1);
+    return parts.length >= 2 ? parts.slice(0, 2).map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ') : '';
+  };
+  form.elements.profile.addEventListener('change', () => { if (!fval('name')) { const n = nameFromProfileUrl(fval('profile')); if (n) form.elements.name.value = n; } });
+  const guessRecipient = (headline) => (/recruit|talent|sourc|hiring partner/i.test(headline) ? 'recruiter' : /manager|director|head of|\bvp\b|lead\b/i.test(headline) ? 'manager' : 'engineer');
+
+  function applyProfilePrefill(p) {
+    const name = (p.get('name') || '').trim(), headline = (p.get('headline') || '').trim(), degree = p.get('degree') || '';
+    const profile = liUrl(p.get('profile') || '') || '';
+    const job = getActiveJob();
+    form.reset();
+    setTimeout(() => {
+      form.elements.name.value = name || nameFromProfileUrl(profile);
+      form.elements.profile.value = profile;
+      if (job) { form.elements.company.value = job.company; form.elements.role.value = job.role; form.elements.link.value = job.link; }
+      const rec = degree === '1' ? 'connection' : guessRecipient(headline);
+      form.elements.recipient.value = rec;
+      const type = degree === '1' ? 'message' : inmailsToday() >= LI_LIMIT ? 'note' : 'inmail';
+      form.querySelector(`input[name="type"][value="${type}"]`).checked = true;
+      syncFormMode();
+      const box = $('li-prefill'); box.hidden = false; box.replaceChildren();
+      box.append(icon('check', 'ic'));
+      const t = el('div');
+      t.append(el('b', null, `Filled from LinkedIn: ${form.elements.name.value || 'profile'}`));
+      const deg = { '1': '1st-degree connection', '2': '2nd-degree', '3': '3rd-degree' }[degree];
+      t.append(el('div', null, [headline, deg].filter(Boolean).join(' · ')));
+      t.append(el('div', null, job ? `Job: ${job.role || 'role'} at ${job.company}. Change the fields if this is for a different job.` : 'No job selected yet: fill in the company and job title, or start from a job\'s Find people button next time.'));
+      if (degree === '1') t.append(el('div', null, "They're a connection, so this is a free Message. Ask them for a referral."));
+      else if (degree === '2') t.append(el('div', null, 'Tip: you share a connection with them. You could ask that person for an intro instead (choose "Mutual connection").'));
+      box.append(t);
+      const missing = ['company', 'role'].find((n) => !fval(n));
+      (missing ? form.elements[missing] : form.querySelector('button[type="submit"]')).focus();
+    }, 0);
+  }
+
+  // The bookmarklet: run on a LinkedIn profile, it reads the name, headline and connection degree from the
+  // page you're looking at and opens this dashboard's composer with them filled in.
+  (() => {
+    const dash = location.origin + location.pathname;
+    const code = `(()=>{if(!/linkedin\\.com\\/in\\//.test(location.href)){alert('Open a LinkedIn profile first, then click Draft with Job Agent.');return;}`
+      + `const h=document.querySelector('main h1')||document.querySelector('h1');`
+      + `const name=((h&&h.innerText)||document.title.split('|')[0]).replace(/\\s+/g,' ').trim();`
+      + `const card=(h&&(h.closest('section')||h.parentElement))||document.body;`
+      + `const hd=card.querySelector('.text-body-medium');const headline=hd?hd.innerText.trim():'';`
+      + `const m=card.innerText.slice(0,1200).match(/\\b(1st|2nd|3rd)\\b/);const degree=m?m[1].charAt(0):'';`
+      + `const profile=location.origin+location.pathname.replace(/\\/$/,'');`
+      + `window.open('${dash}#/linkedin?'+new URLSearchParams({name,headline,degree,profile}),'jobagent');})()`;
+    const a = $('li-bookmarklet');
+    a.href = 'javascript:' + encodeURI(code);
+    a.addEventListener('click', (e) => { e.preventDefault(); alert('Drag this button to your bookmarks bar. Then click it while viewing someone\'s LinkedIn profile.'); });
+  })();
 
   document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.k; if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = k === 'Match Score' || k === 'Date Found' ? -1 : 1; }

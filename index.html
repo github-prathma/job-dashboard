@@ -256,6 +256,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
 .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
 .toggle input { width: 16px; height: 16px; accent-color: var(--brand); }
 #ad-list { display: grid; gap: 18px; }
+.bm { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-weight: 800; font-size: 13px; text-decoration: none; color: #fff; background: linear-gradient(135deg, var(--brand), var(--brand-2)); cursor: grab; width: max-content; box-shadow: var(--shadow); }
+.bm-steps { margin: 12px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; color: var(--text); }
 .find-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .find-btn { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--fc) 40%, var(--line)); background: color-mix(in srgb, var(--fc) 8%, var(--panel)); text-decoration: none; color: var(--ink); }
 .find-btn:hover { background: color-mix(in srgb, var(--fc) 16%, var(--panel)); }
@@ -558,6 +560,7 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
       <div class="w">
         <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-pen"/></svg></span><div><h2>Who are you reaching out to?</h2><p class="hint">Messages use only true facts from your resume</p></div></div></div>
         <form class="form" id="li-form" novalidate>
+          <div class="posting ok" id="li-prefill" hidden></div>
           <div class="seg" role="radiogroup" aria-label="Message type">
             <label><input type="radio" name="type" value="inmail" checked><span><svg class="ic sm"><use href="#i-mail"/></svg>InMail</span></label>
             <label><input type="radio" name="type" value="note"><span><svg class="ic sm"><use href="#i-user-plus"/></svg>Connection note</span></label>
@@ -607,6 +610,15 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
           <div class="inmail-count"><b id="li-count">0</b><span id="li-count-of">of 5 sent</span></div>
           <div class="meter" style="--k: var(--s-referral); flex: none"><span id="li-meter"></span></div>
           <div class="li-warn" id="li-warn" hidden>You've used today's InMails. <button class="btn sm" type="button" id="li-switch">Switch to connection note</button></div>
+        </div>
+        <div class="w" id="li-bm">
+          <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-zap"/></svg></span><div><h2>One-click drafting from LinkedIn</h2><p class="hint">No more copying names</p></div></div></div>
+          <a class="bm" id="li-bookmarklet" href="#"><svg class="ic sm"><use href="#i-briefcase"/></svg>Draft with Job Agent</a>
+          <ol class="bm-steps">
+            <li>Drag the button above to your browser's bookmarks bar (once).</li>
+            <li>On a job here, click a Find people button such as <b>Your connections</b>.</li>
+            <li>Open someone's LinkedIn profile and click <b>Draft with Job Agent</b>. This page opens with their name, profile, the job and the right message type filled in.</li>
+          </ol>
         </div>
         <div class="w" id="li-tips">
           <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-ready)"><svg class="ic"><use href="#i-target"/></svg></span><div><h2>What works</h2><p class="hint">Short, specific, one clear ask</p></div></div></div>
