@@ -354,6 +354,7 @@
     overview: { title: null, sub: null },
     analytics: { title: 'Analytics', sub: 'How your search is converting, and where the jobs come from' },
     jobs: { title: 'All jobs', sub: null },
+    drafts: { title: 'Agent drafts', sub: 'People the agents found for each job, with messages ready to send. Your connections come first.' },
     linkedin: { title: 'LinkedIn outreach', sub: "Draft an InMail or a connection note to anyone at a company you're applying to" },
     files: { title: 'Files and runs', sub: 'Agent run logs and the Drive files the agents use' },
   };
@@ -685,6 +686,9 @@
     mk('Hiring managers', 'Hiring manager', REL['Hiring manager'].color);
     if (counts['Engineer']) mk('Engineers', 'Engineer', REL['Engineer'].color);
     $('ad-hide-sent').checked = hideSent;
+    const used = inmailsToday();
+    $('ad-inmail-text').textContent = `${fmt(used)} of ${LI_LIMIT} InMails sent today`;
+    $('ad-inmail').classList.toggle('full', used >= LI_LIMIT);
 
     const list = drafts.filter((d) => (!relFilter || relOf(d) === relFilter) && (!hideSent || !sent[draftId(d)]));
     if (!drafts.length) return emptyBox(box, 'No agent drafts yet. After each run, the people the agents found for every job show up here, with your 1st-degree connections first.', 'users', usingSample || jobs.length ? null : sampleButton());
@@ -747,7 +751,7 @@
     });
     else mk('Undo sent', 'refresh', () => { const m = readSent(); delete m[id]; writeSent(m); renderAgentDrafts(); });
     const foot = el('div', 'ad-foot'); foot.append(acts, count); card.append(foot);
-    if (type === 'inmail' && !isSent && inmailsToday() >= LI_LIMIT) card.append(el('div', 'ad-warn', `Today's ${LI_LIMIT} InMails are used. Send this tomorrow, or draft a connection note above instead.`));
+    if (type === 'inmail' && !isSent && inmailsToday() >= LI_LIMIT) card.append(el('div', 'ad-warn', `Today's ${LI_LIMIT} InMails are used. Send this tomorrow, or write them a connection note on the LinkedIn outreach page.`));
     return card;
   }
   $('ad-hide-sent').addEventListener('change', (e) => { hideSent = e.target.checked; renderAgentDrafts(); });

@@ -256,6 +256,9 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
 .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
 .toggle input { width: 16px; height: 16px; accent-color: var(--brand); }
 #ad-list { display: grid; gap: 18px; }
+.ad-tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; }
+.ad-inmail { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--s-referral) 12%, var(--panel)); color: color-mix(in srgb, var(--s-referral) 80%, var(--ink)); }
+.ad-inmail.full { background: color-mix(in srgb, var(--warn) 14%, var(--panel)); color: var(--warn); }
 .ad-group { display: grid; gap: 10px; }
 .ad-head { display: flex; align-items: center; gap: 10px; }
 .ad-head small { display: block; color: var(--muted); font-size: 12px; }
@@ -391,7 +394,8 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
       <a href="#/overview" data-page="overview" class="on"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
       <a href="#/analytics" data-page="analytics"><svg class="ic"><use href="#i-bars"/></svg>Analytics</a>
       <a href="#/jobs" data-page="jobs"><svg class="ic"><use href="#i-list"/></svg>All jobs<span class="nav-badge" id="nav-ready" hidden></span></a>
-      <a href="#/linkedin" data-page="linkedin"><svg class="ic"><use href="#i-message"/></svg>LinkedIn outreach<span class="nav-badge green" id="nav-drafts" hidden></span></a>
+      <a href="#/linkedin" data-page="linkedin"><svg class="ic"><use href="#i-message"/></svg>LinkedIn outreach</a>
+      <a href="#/drafts" data-page="drafts"><svg class="ic"><use href="#i-users"/></svg>Agent drafts<span class="nav-badge green" id="nav-drafts" hidden></span></a>
       <a href="#/files" data-page="files"><svg class="ic"><use href="#i-folder"/></svg>Files and runs</a>
     </nav>
     <div class="nav-sub">Edit</div>
@@ -608,15 +612,6 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
       <div class="drafts" id="li-drafts"></div>
     </section>
 
-    <section class="w" id="agent-drafts">
-      <div class="w-head">
-        <div class="w-title"><span class="kpi-icon" style="--k: var(--s-offer)"><svg class="ic"><use href="#i-users"/></svg></span><div><h2>Agent drafts</h2><p class="hint" id="ad-hint"></p></div></div>
-        <label class="toggle"><input type="checkbox" id="ad-hide-sent" checked><span>Hide sent</span></label>
-      </div>
-      <div class="chips" id="ad-chips" style="margin-bottom:14px"></div>
-      <div id="ad-list"></div>
-    </section>
-
     <section class="w">
       <div class="w-head">
         <div class="w-title"><span class="kpi-icon" style="--k: var(--brand-2)"><svg class="ic"><use href="#i-clock"/></svg></span><div><h2>Sent log</h2><p class="hint">Messages you marked as sent. Saved in this browser only</p></div></div>
@@ -624,6 +619,21 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
       </div>
       <div id="li-log"></div>
     </section>
+    </div>
+
+    <div class="page" data-page="drafts" hidden>
+    <section class="w" id="agent-drafts">
+      <div class="w-head">
+        <div class="w-title"><span class="kpi-icon" style="--k: var(--s-offer)"><svg class="ic"><use href="#i-users"/></svg></span><div><h2>Drafts by job</h2><p class="hint" id="ad-hint"></p></div></div>
+        <label class="toggle"><input type="checkbox" id="ad-hide-sent" checked><span>Hide sent</span></label>
+      </div>
+      <div class="ad-tools">
+        <div class="chips" id="ad-chips"></div>
+        <div class="ad-inmail" id="ad-inmail"><svg class="ic sm"><use href="#i-mail"/></svg><span id="ad-inmail-text">0 of 5 InMails sent today</span></div>
+      </div>
+      <div id="ad-list"></div>
+    </section>
+
     </div>
 
     <div class="page" data-page="files" hidden>
