@@ -128,6 +128,8 @@ The agents run in [Claude](https://claude.ai) as a **scheduled task** and need t
 | **Agent drafts** | Messages the agents prepared, grouped by job. Copy, open the person's profile, send it on LinkedIn, then click **Mark as sent**. |
 | **Files and runs** | Recent run logs and links to your Drive files. |
 
+**Light or dark?** Use the sun / screen / moon switch at the bottom of the sidebar (or top-right of the sign-in page). The screen icon follows your device setting.
+
 **To update a job's status,** change the Status column in the sheet. The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**.
 
 ### Finding people to ask for referrals
@@ -160,7 +162,7 @@ The JavaScript origin in step 3 must be exactly `https://<your-github-username>.
 GitHub Pages takes about a minute after a commit. Then hard-refresh (Cmd+Shift+R or Ctrl+Shift+R).
 
 **What's saved in my browser?**
-Only small conveniences: which drafts you marked sent, your sent-message log, and the job you picked last. Clearing site data resets them. Your sign-in lasts about an hour.
+Only small conveniences: your light/dark choice, which drafts you marked sent, your sent-message log, and the job you picked last. Clearing site data resets them. Your sign-in lasts about an hour.
 
 **Is my data public?**
 No. The website code is public, but it holds no data. Only someone who signs in with an account that can open your sheet sees anything.

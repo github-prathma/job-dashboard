@@ -887,5 +887,20 @@
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 200); });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
 
+  // Light / dark / match device. Saved in this browser only.
+  function applyTheme(mode) {
+    if (mode === 'light' || mode === 'dark') document.documentElement.dataset.theme = mode;
+    else { delete document.documentElement.dataset.theme; mode = 'system'; }
+    try { localStorage.setItem('jd_theme', mode); } catch (e) { /* storage blocked */ }
+    document.querySelectorAll('[data-theme-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeSet === mode)));
+  }
+  let savedTheme = 'system';
+  try { savedTheme = localStorage.getItem('jd_theme') || 'system'; } catch (e) { /* storage blocked */ }
+  applyTheme(savedTheme);
+  document.querySelectorAll('[data-theme-set]').forEach((b) => b.addEventListener('click', () => {
+    applyTheme(b.dataset.themeSet);
+    try { render(); } catch (e) { /* not signed in yet */ }
+  }));
+
   initAuth();
 })();
