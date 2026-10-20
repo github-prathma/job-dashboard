@@ -2,6 +2,75 @@
 
 A private dashboard for the job search agents. The page itself is public on GitHub Pages, but it holds no data: you sign in with Google and it reads the tracker sheet and run logs straight from your Drive into your browser. Nothing is stored on GitHub.
 
+## What you need in Google Drive
+
+The dashboard reads two things live (a tracker sheet and a run-logs folder) and links to five more. All of them live in one Drive folder owned by the Google account you sign in with.
+
+### Folder layout
+
+```
+Job Agent/                              (any name; linked as "Job Agent folder")
+├── Job Application Tracker             Google Sheet   — READ by the dashboard
+├── Run Logs/                           Folder         — READ by the dashboard
+│   ├── Run 2026-10-20 07:43 PT         Google Docs written by the agents
+│   └── ...
+├── SEARCH CONFIG (edit me)             Google Doc     — linked only
+├── BASE RESUME - <your name>           Google Doc     — linked only
+├── Tailored Resumes/                   Folder         — linked only (one subfolder per company)
+└── Referral Outreach Drafts/           Folder         — linked only
+```
+
+"Linked only" items just need to exist so the buttons open them; the dashboard never reads their contents.
+
+### 1. Tracker sheet (required)
+
+A Google Sheet whose **first tab** has this header row in **row 1, columns A to P, in this exact order and spelling**:
+
+| Col | Header | What goes in it |
+|---|---|---|
+| A | Date Found | `YYYY-MM-DD` (Pacific date). Store as text (type it with a leading `'`) so Sheets doesn't reformat it. Drives "Prepared today" and the per-day chart. |
+| B | Company | Company name. Drives "Top companies". |
+| C | Job Title | Role name; becomes the link to the posting. |
+| D | Location | Free text. |
+| E | Job Link | Full `https://` URL to the posting. Used by **Apply**. |
+| F | Source | Where it was found (Greenhouse, Ashby, LinkedIn…). |
+| G | Posted At | `YYYY-MM-DD HH:mm`, as text. |
+| H | Match Score | Plain number 0–100. Colored green at 85+, blue at 75+. |
+| I | Sponsorship Signal | e.g. `Not stated`, `Sponsors`. |
+| J | H-1B History | e.g. `Strong`, `Some`, `None found`. |
+| K | Tailored Resume Link | `https://` link to the tailored resume. Used by **Resume**. |
+| L | Company Folder | `https://` link to the company's resume folder. Used by **Folder**. |
+| M | Outreach Drafts Link | `https://` link to the outreach doc. Used by **Outreach**. |
+| N | Status | One of: `Ready to apply`, `Applied`, `Referral requested`, `Interviewing`, `Offer`, `Rejected`, `Skipped`. Blank counts as Ready to apply. A dropdown with these values is recommended (Data → Data validation). |
+| O | Date Applied | `YYYY-MM-DD` (yours to fill in). |
+| P | Missing Keywords / Notes | Free text. |
+
+How the statuses roll up in the pipeline: **Applied** counts Applied, Referral requested, Interviewing, Offer and Rejected; **Interviewing** counts Interviewing and Offer; **Skipped** is left out of Prepared. Up to 999 job rows are read (range `A1:P1000`, set in `config.js`).
+
+Links that are empty or don't start with `https://` show as greyed-out buttons.
+
+### 2. Run Logs folder (required)
+
+A Drive folder holding one **Google Doc** per agent run, titled starting with **`Run `** (capital R, then a space), e.g. `Run 2026-10-20 07:43 PT`. The dashboard lists the 8 newest by creation time. Other files in the folder (such as the agents' `seen-jobs` list) are ignored. An empty folder is fine; the card says no runs yet.
+
+### 3. IDs and links in `config.js`
+
+Copy each ID from the item's address bar:
+
+| Setting | Comes from | Example URL → ID |
+|---|---|---|
+| `TRACKER_SHEET_ID` | the tracker sheet | `docs.google.com/spreadsheets/d/`**`1PUw…nhGM`**`/edit` |
+| `RUN_LOGS_FOLDER_ID` | the Run Logs folder | `drive.google.com/drive/folders/`**`1n6L…v0s`** |
+| `LINKS.*` | full URLs of the config doc, base resume, the two output folders, and the main folder | paste the whole URL |
+| `GOOGLE_ACCOUNT_HINT` | the email that owns (or can view) the files | `prathma0909@gmail.com` |
+
+### 4. Access
+
+- Sign in with a Google account that **owns or can view** the tracker and the Run Logs folder. Any other account loads nothing and shows a "could not load data" message.
+- That account must be listed as a **Test user** on the OAuth consent screen (step 2 below) while the app is in Testing.
+- The dashboard asks only for read-only access: `spreadsheets.readonly` (to read the tracker) and `drive.metadata.readonly` (to list run-log titles and links, not their contents). It cannot edit or delete anything.
+- Nothing in Drive needs to be shared publicly or "published to the web".
+
 ## One-time setup
 
 ### 1. Turn on GitHub Pages
