@@ -2,6 +2,10 @@
 
 **Live demo:** https://github-prathma.github.io/job-dashboard/ (sign-in only works for accounts added as test users; click **Preview with sample data** after signing in to see the layout).
 
+![Demo: sign in, overview, analytics, jobs, LinkedIn outreach, agent drafts and the dark theme](docs/demo.gif)
+
+*A one-minute tour using sample data. [Watch the full-quality video (MP4)](docs/demo.mp4).*
+
 A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
 **Your data stays in your own Google Drive.** The website holds no data. When you sign in with Google, your browser reads your tracker sheet directly from Drive. The dashboard can only *read*; it can't change or delete anything.
@@ -180,3 +184,4 @@ No. The website code is public, but it holds no data. Only someone who signs in 
 | `outreach.js` | **Your message facts**: pitch, highlights, schools, past employers |
 | `agent/agent-prompt.md` | Prompt for the scheduled Claude agents (fill in the placeholders) |
 | `agent/search-config-template.md` | Starting point for your SEARCH CONFIG doc |
+| `docs/demo.gif`, `docs/demo.mp4` | The demo shown at the top of this page |
