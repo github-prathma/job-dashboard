@@ -97,6 +97,7 @@ The client ID is not a secret: Google only honors it from the origins you listed
 - Open the site and click **Sign in with Google**, choosing `prathma0909@gmail.com`.
 - Data loads live from the tracker. It refreshes every 5 minutes while the tab is open, when you come back to the tab, and when you click **Refresh data**.
 - Before the first agent run, use **Preview with sample data** (in the Next up card) to see the layout with made-up jobs. A banner marks sample mode; **Show my data** switches back.
+- **LinkedIn outreach** page: enter a person, company and job title, choose InMail or Connection note, and get two drafts to edit and copy. Connection notes are kept within LinkedIn's 200-character limit, and a counter tracks your 5 InMails a day. The **Message** button on any row in All jobs opens this page prefilled. The sent log lives in your browser only.
 - To change a status, edit the tracker sheet (the Status column has a dropdown). The dashboard is read-only.
 - Sign-in lasts about an hour per tab; after that Google asks again silently or with one click.
 
@@ -104,3 +105,4 @@ The client ID is not a secret: Google only honors it from the origins you listed
 - `index.html` – layout and styles
 - `app.js` – Google sign-in, data loading and charts
 - `config.js` – client ID, file IDs, links and limits (edit this to change settings)
+- `outreach.js` – LinkedIn message wording and the resume facts it draws from (edit to change tone or add highlights)

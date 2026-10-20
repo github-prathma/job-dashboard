@@ -340,6 +340,7 @@
     overview: { title: null, sub: null },
     analytics: { title: 'Analytics', sub: 'How your search is converting, and where the jobs come from' },
     jobs: { title: 'All jobs', sub: null },
+    linkedin: { title: 'LinkedIn outreach', sub: "Draft an InMail or a connection note to anyone at a company you're applying to" },
     files: { title: 'Files and runs', sub: 'Agent run logs and the Drive files the agents use' },
   };
   let page = 'overview';
@@ -431,6 +432,8 @@
       td(r['Date Found'] ? fmtDay(r['Date Found']) : '—', 'hide-sm nowrap');
       const acts = el('div', 'acts');
       acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'), btn('', r['Company Folder'], 'folder'));
+      const dr = el('button', 'btn sm'); dr.type = 'button'; dr.style.setProperty('--b', 'var(--brand)'); dr.title = 'Draft a LinkedIn message for this job';
+      dr.append(icon('pen'), document.createTextNode('Message')); dr.addEventListener('click', () => prefillOutreach(r)); acts.append(dr);
       acts.lastChild.title = acts.lastChild.getAttribute('aria-disabled') ? acts.lastChild.title : 'Company folder';
       td(acts);
       body.append(tr);
@@ -499,6 +502,111 @@
     renderChips(D.statusCounts);
     renderJobs();
     renderRuns();
+    renderOutreachStatus();
+  }
+
+  // ---------- LinkedIn outreach ----------
+  const LI_LIMIT = C.INMAIL_DAILY_LIMIT || 5;
+  const LOG_KEY = 'jd_li_log';
+  const readLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch (e) { return []; } };
+  const writeLog = (log) => { try { localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 200))); } catch (e) {} };
+  const form = $('li-form');
+  const fval = (n) => String(form.elements[n].value || '').trim();
+  const inmailsToday = () => readLog().filter((x) => x.type === 'inmail' && x.day === todayPT()).length;
+  const liUrl = (u) => (/^https:\/\/([a-z]+\.)?linkedin\.com\//i.test(u) ? u : null);
+
+  function renderOutreachStatus() {
+    const n = inmailsToday();
+    $('li-count').textContent = fmt(n);
+    $('li-count-of').textContent = `of ${LI_LIMIT} sent`;
+    $('li-meter').style.width = Math.min(100, (n / LI_LIMIT) * 100) + '%';
+    $('li-warn').hidden = !(n >= LI_LIMIT && form.elements.type.value === 'inmail');
+    const box = $('li-log'); const log = readLog();
+    $('li-clear').hidden = !log.length;
+    if (!log.length) return emptyBox(box, 'Nothing sent yet. Mark a draft as sent and it shows up here.', 'message');
+    box.replaceChildren(); const list = el('div', 'log');
+    for (const x of log.slice(0, 25)) {
+      const row = el('div', 'log-row');
+      const ic = el('span', 'kpi-icon'); ic.style.setProperty('--k', x.type === 'inmail' ? 'var(--s-referral)' : 'var(--brand)'); ic.append(icon(x.type === 'inmail' ? 'mail' : 'user-plus', 'ic'));
+      const t = el('div'); t.append(el('b', null, `${x.name} · ${x.company}`), el('small', null, `${x.type === 'inmail' ? 'InMail' : 'Connection note'} · ${x.role} · ${fmtDay(x.day)}`));
+      const open = btn('Profile', x.profile, 'external');
+      row.append(ic, t, open); list.append(row);
+    }
+    box.append(list);
+  }
+
+  function syncFormMode() {
+    const note = form.elements.type.value === 'note';
+    $('li-goal-wrap').hidden = note;
+    renderOutreachStatus();
+  }
+  form.querySelectorAll('input[name="type"]').forEach((x) => x.addEventListener('change', syncFormMode));
+  $('li-switch').addEventListener('click', () => { form.querySelector('input[value="note"]').checked = true; syncFormMode(); if (!$('li-drafts-card').hidden) form.requestSubmit(); });
+  $('li-clear').addEventListener('click', () => { if (confirm('Clear the sent log in this browser?')) { writeLog([]); renderOutreachStatus(); } });
+  form.addEventListener('reset', () => setTimeout(() => { $('li-drafts-card').hidden = true; $('li-err').textContent = ''; form.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid')); syncFormMode(); }, 0));
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const missing = ['name', 'company', 'role'].filter((n) => !fval(n));
+    form.querySelectorAll('input').forEach((x) => x.removeAttribute('aria-invalid'));
+    missing.forEach((n) => form.elements[n].setAttribute('aria-invalid', 'true'));
+    if (missing.length) { $('li-err').textContent = 'Add the person\'s name, the company and the job title.'; form.elements[missing[0]].focus(); return; }
+    $('li-err').textContent = '';
+    const f = { type: form.elements.type.value, name: fval('name'), company: fval('company'), role: fval('role'), recipient: fval('recipient'), goal: fval('goal'), link: safeUrl(fval('link')) || '', profile: liUrl(fval('profile')) || '' };
+    const { highlight, variants } = window.JD_OUTREACH.draft(f);
+    const recip = { recruiter: 'a recruiter', manager: 'a hiring manager', engineer: 'an engineer on the team', connection: 'someone you know' }[f.recipient];
+    $('li-drafts-hint').textContent = `${f.type === 'note' ? 'Connection notes' : 'InMails'} for ${recip} · leads with your ${highlight.area} experience`;
+    const prof = $('li-profile');
+    prof.href = f.profile || 'https://www.linkedin.com/search/results/people/?' + new URLSearchParams({ keywords: `${f.name} ${f.company}` });
+    prof.lastChild.textContent = f.profile ? 'Open profile' : 'Find on LinkedIn';
+    renderDrafts(f, variants);
+    $('li-drafts-card').hidden = false;
+    $('li-drafts-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  function copy(text, b) {
+    const done = () => { const old = b.lastChild.textContent; b.lastChild.textContent = 'Copied'; b.classList.add('done'); setTimeout(() => { b.lastChild.textContent = old; b.classList.remove('done'); }, 1400); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => { prompt('Copy this:', text); });
+    else prompt('Copy this:', text);
+  }
+
+  function renderDrafts(f, variants) {
+    const box = $('li-drafts'); box.replaceChildren();
+    const L = window.JD_OUTREACH.LIMITS;
+    variants.forEach((v, i) => {
+      const card = el('div', 'draft' + (f.type === 'note' ? ' note' : ''));
+      const top = el('div', 'draft-top'); top.append(el('span', null, `Option ${i + 1}`));
+      const count = el('span', 'count'); top.append(count); card.append(top);
+      let subj = null;
+      if (f.type === 'inmail') { subj = el('input'); subj.value = v.subject; subj.setAttribute('aria-label', 'Subject'); subj.maxLength = L.subject; card.append(subj); }
+      const ta = el('textarea'); ta.value = v.body; ta.setAttribute('aria-label', 'Message'); card.append(ta);
+      const limit = f.type === 'note' ? L.note : L.inmail;
+      const upd = () => { const n = ta.value.length; count.textContent = `${n} / ${limit}`; count.classList.toggle('over', n > limit); };
+      ta.addEventListener('input', upd); upd();
+      const acts = el('div', 'draft-acts');
+      const mk = (label, ic, fn, primary) => { const b = el('button', 'btn sm' + (primary ? ' primary' : '')); b.type = 'button'; b.append(icon(ic), document.createTextNode(label)); b.addEventListener('click', () => fn(b)); acts.append(b); return b; };
+      if (subj) mk('Copy subject', 'copy', (b) => copy(subj.value, b));
+      mk(f.type === 'note' ? 'Copy note' : 'Copy message', 'copy', (b) => copy(ta.value, b), true);
+      mk('Mark as sent', 'check', (b) => {
+        if (f.type === 'note' && ta.value.length > L.note) { count.classList.add('over'); alert('This note is over 200 characters. Shorten it before sending.'); return; }
+        const log = readLog(); log.unshift({ day: todayPT(), at: Date.now(), type: f.type, name: f.name, company: f.company, role: f.role, recipient: f.recipient, profile: f.profile });
+        writeLog(log); b.lastChild.textContent = 'Sent'; b.classList.add('done'); b.disabled = true; renderOutreachStatus();
+      });
+      card.append(acts); box.append(card);
+    });
+  }
+
+  function prefillOutreach(r) {
+    form.reset();
+    setTimeout(() => {
+      form.elements.company.value = r['Company'] || '';
+      form.elements.role.value = r['Job Title'] || '';
+      form.elements.link.value = safeUrl(r['Job Link']) || '';
+      if (inmailsToday() >= LI_LIMIT) form.querySelector('input[value="note"]').checked = true;
+      syncFormMode();
+      go('linkedin');
+      setTimeout(() => form.elements.name.focus(), 50);
+    }, 0);
   }
 
   document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
