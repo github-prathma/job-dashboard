@@ -21,9 +21,10 @@
   $('t-limit').textContent = `of the ${C.DAILY_LIMIT}-a-day limit`;
 
   // ---------- Google sign-in (token kept in memory and this tab only) ----------
+  $('signin').disabled = true;
   function initAuth() {
     if (!window.google || !google.accounts || !google.accounts.oauth2) { setTimeout(initAuth, 200); return; }
-    if (C.GOOGLE_CLIENT_ID.startsWith('PASTE_')) { $('gate-err').textContent = 'Add your Google OAuth client ID to config.js first.'; $('signin').disabled = true; return; }
+    if (C.GOOGLE_CLIENT_ID.startsWith('PASTE_')) { showGate('signin', 'Add your Google OAuth client ID to config.js first.'); $('signin').disabled = true; return; }
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: C.GOOGLE_CLIENT_ID,
       scope: SCOPES,
@@ -38,17 +39,29 @@
       },
       error_callback: (err) => showGateError('Sign-in was closed or blocked (' + (err && err.type) + '). Allow pop-ups and try again.'),
     });
+    $('signin').disabled = false;
     try {
       const saved = JSON.parse(sessionStorage.getItem('jd_tok') || 'null');
       if (saved && saved.tokenExpiry > Date.now()) { token = saved.token; tokenExpiry = saved.tokenExpiry; start(); }
     } catch (e) {}
   }
-  function showGateError(msg) { $('gate-err').textContent = msg; $('app-err').textContent = msg; }
-  $('signin').addEventListener('click', () => tokenClient && tokenClient.requestAccessToken({ prompt: '' }));
+  // Screens: the sign-in gate (with a loading state) and the dashboard.
+  function showGate(mode, error) {
+    $('app').hidden = true; $('gate').hidden = false;
+    $('gate-signin').hidden = mode !== 'signin';
+    $('gate-loading').hidden = mode !== 'loading';
+    $('gate-err').textContent = error || '';
+  }
+  function showApp() { $('gate').hidden = true; $('app').hidden = false; }
+  function clearToken() { token = null; tokenExpiry = 0; try { sessionStorage.removeItem('jd_tok'); } catch (e) {} }
+  function showGateError(msg) {
+    if ($('app').hidden) showGate('signin', msg); else $('app-err').textContent = msg;
+  }
+  $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: '' }); } });
   $('signout').addEventListener('click', () => {
     if (token) google.accounts.oauth2.revoke(token, () => {});
-    token = null; try { sessionStorage.removeItem('jd_tok'); } catch (e) {}
-    clearInterval(timer); $('app').hidden = true; $('gate').hidden = false;
+    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = [];
+    showGate('signin');
   });
   function ensureToken() {
     if (token && Date.now() < tokenExpiry) return Promise.resolve();
@@ -80,15 +93,25 @@
       runs = (drive.files || []).map((f) => ({ title: f.name, created: f.createdTime, link: f.webViewLink }));
       lastLoaded = new Date();
       render();
+      $('updated').textContent = 'Updated ' + lastLoaded.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      return true;
     } catch (e) {
-      $('app-err').textContent = 'Could not load data: ' + e.message + '. Make sure you signed in with the Google account that owns the tracker.';
+      $('app-err').textContent = 'Could not load data: ' + e.message;
+      $('updated').textContent = lastLoaded ? 'Updated ' + lastLoaded.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+      return e;
     }
-    $('updated').textContent = lastLoaded ? 'Updated ' + lastLoaded.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   }
 
-  function start() {
-    $('gate').hidden = true; $('app').hidden = false;
-    load();
+  // After sign-in: show a spinner, load the data, and open the dashboard only if it loaded.
+  async function start() {
+    showGate('loading');
+    const ok = await load();
+    if (ok !== true) {
+      clearToken();
+      showGate('signin', 'Could not load your tracker (' + ok.message.slice(0, 120) + '). Sign in with the Google account that owns the tracker, and check that the Sheets and Drive APIs are enabled.');
+      return;
+    }
+    showApp();
     clearInterval(timer);
     timer = setInterval(() => { if (!document.hidden) load(); }, C.AUTO_REFRESH_MINUTES * 60000);
   }
