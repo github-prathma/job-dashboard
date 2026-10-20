@@ -213,14 +213,14 @@ window.JD_OUTREACH = (() => {
   function peopleSearch(company, kind) {
     const base = 'https://www.linkedin.com/search/results/people/?';
     const c = String(company || '').trim();
-    const q = c.includes(' ') ? `"${c}"` : c;
+    // company= is LinkedIn's "Company" keyword filter (All filters > Keywords > Company). It matches
+    // the person's current company, unlike plain keywords, which also match "Ex-Stripe" headlines.
+    const params = { origin: 'FACETED_SEARCH', geoUrn: '["103644278"]', company: c };
     // geoUrn 103644278 is LinkedIn's filter for people located in the United States.
-    const params = { origin: 'FACETED_SEARCH', geoUrn: '["103644278"]' };
-    if (kind === 'first') { params.keywords = c; params.network = '["F"]'; }
-    else if (kind === 'second') { params.keywords = c; params.network = '["S"]'; }
-    else if (kind === 'alumni') params.keywords = `${q} AND (${SCHOOLS.join(' OR ')})`;
-    else if (kind === 'colleagues') params.keywords = `${q} AND (${PAST_EMPLOYERS.join(' OR ')})`;
-    else params.keywords = c;
+    if (kind === 'first') params.network = '["F"]';
+    else if (kind === 'second') params.network = '["S"]';
+    else if (kind === 'alumni') params.keywords = SCHOOLS.join(' OR ');
+    else if (kind === 'colleagues') params.keywords = PAST_EMPLOYERS.join(' OR ');
     return base + new URLSearchParams(params).toString();
   }
   const SEARCHES = [
