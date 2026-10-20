@@ -355,7 +355,7 @@
     analytics: { title: 'Analytics', sub: 'How your search is converting, and where the jobs come from' },
     jobs: { title: 'All jobs', sub: null },
     drafts: { title: 'Agent drafts', sub: 'People the agents found for each job, with messages ready to send. Your connections come first.' },
-    linkedin: { title: 'LinkedIn outreach', sub: "Draft an InMail or a connection note to anyone at a company you're applying to" },
+    linkedin: { title: 'LinkedIn outreach', sub: "Find warm contacts at a company, then draft an InMail, connection note, message or intro ask" },
     files: { title: 'Files and runs', sub: 'Agent run logs and the Drive files the agents use' },
   };
   let page = 'overview';
@@ -400,6 +400,8 @@
       const acts = el('div', 'q-acts');
       acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'));
       acts.firstChild.classList.add('primary');
+      const cn = el('a', 'btn sm'); cn.style.setProperty('--b', 'var(--s-offer)'); cn.href = window.JD_OUTREACH.peopleSearch(r['Company'], 'first'); cn.target = '_blank'; cn.rel = 'noopener'; cn.title = 'Your 1st-degree connections at ' + r['Company'];
+      cn.append(icon('users'), document.createTextNode('Connections')); acts.append(cn);
       q.append(s, main, acts); box.append(q);
     }
   }
@@ -448,7 +450,7 @@
       const acts = el('div', 'acts');
       acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'), btn('', r['Company Folder'], 'folder'));
       const dr = el('button', 'btn sm'); dr.type = 'button'; dr.style.setProperty('--b', 'var(--brand)'); dr.title = 'Draft a LinkedIn message for this job';
-      dr.append(icon('pen'), document.createTextNode('Message')); dr.addEventListener('click', () => prefillOutreach(r)); acts.append(dr);
+      dr.append(icon('users'), document.createTextNode('People')); dr.title = 'Find connections at this company and draft a message'; dr.addEventListener('click', () => prefillOutreach(r)); acts.append(dr);
       acts.lastChild.title = acts.lastChild.getAttribute('aria-disabled') ? acts.lastChild.title : 'Company folder';
       td(acts);
       body.append(tr);
@@ -518,6 +520,7 @@
     renderJobs();
     renderRuns();
     renderOutreachStatus();
+    renderFind();
     renderAgentDrafts();
   }
 
@@ -530,6 +533,30 @@
   const fval = (n) => String(form.elements[n].value || '').trim();
   const inmailsToday = () => readLog().filter((x) => x.type === 'inmail' && x.day === todayPT()).length;
   const liUrl = (u) => (/^https:\/\/([a-z]+\.)?linkedin\.com\//i.test(u) ? u : null);
+
+  const FIND_COLOR = { first: 'var(--s-offer)', second: 'var(--s-interview)', alumni: 'var(--s-ready)', colleagues: 'var(--brand-2)' };
+  const FIND_ICON = { first: 'users', second: 'user-plus', alumni: 'award', colleagues: 'briefcase' };
+  function findButtons(company, small) {
+    const frag = document.createDocumentFragment();
+    for (const s of window.JD_OUTREACH.SEARCHES) {
+      const a = el('a', small ? 'btn sm' : 'find-btn');
+      a.style.setProperty(small ? '--b' : '--fc', FIND_COLOR[s.kind]);
+      a.target = '_blank'; a.rel = 'noopener';
+      if (company) a.href = window.JD_OUTREACH.peopleSearch(company, s.kind); else a.setAttribute('aria-disabled', 'true');
+      a.title = s.hint;
+      if (small) a.append(icon(FIND_ICON[s.kind]), document.createTextNode(s.label));
+      else { const b = el('b'); b.append(icon(FIND_ICON[s.kind]), document.createTextNode(s.label + ' ↗')); a.append(b, el('small', null, s.hint)); }
+      frag.append(a);
+    }
+    return frag;
+  }
+  function renderFind() {
+    const c = fval('company');
+    $('li-find-title').textContent = c ? `Find people at ${c}` : 'Find people';
+    $('li-find-hint').textContent = c ? 'Warm contacts first: connections, then intros, alumni and ex-colleagues' : 'Enter a company to search LinkedIn for warm contacts';
+    $('li-find-grid').replaceChildren(findButtons(c, false));
+  }
+  form.elements.company.addEventListener('input', renderFind);
 
   function renderOutreachStatus() {
     const n = inmailsToday();
@@ -552,10 +579,15 @@
   }
 
   function syncFormMode() {
-    const note = form.elements.type.value === 'note';
-    $('li-goal-wrap').hidden = note;
+    const intro = fval('recipient') === 'intro';
+    if (intro && form.elements.type.value !== 'message') form.querySelector('input[name="type"][value="message"]').checked = true;
+    const t = form.elements.type.value;
+    $('li-goal-wrap').hidden = t === 'note' || intro;
+    $('li-target-wrap').hidden = !intro;
     renderOutreachStatus();
+    renderFind();
   }
+  form.elements.recipient.addEventListener('change', syncFormMode);
   form.querySelectorAll('input[name="type"]').forEach((x) => x.addEventListener('change', syncFormMode));
   $('li-switch').addEventListener('click', () => { form.querySelector('input[value="note"]').checked = true; syncFormMode(); if (!$('li-drafts-card').hidden) form.requestSubmit(); });
   $('li-clear').addEventListener('click', () => { if (confirm('Clear the sent log in this browser?')) { writeLog([]); renderOutreachStatus(); } });
@@ -606,10 +638,10 @@
     } else $('li-posting').hidden = true;
     if (missing.length) return;
 
-    const f = { type: form.elements.type.value, name: fval('name'), company: fval('company'), role: fval('role'), recipient: fval('recipient'), goal: fval('goal'), link, jd, profile: liUrl(fval('profile')) || '' };
+    const f = { type: form.elements.type.value, name: fval('name'), company: fval('company'), role: fval('role'), recipient: fval('recipient'), goal: fval('goal'), target: fval('target'), link, jd, profile: liUrl(fval('profile')) || '' };
     const { highlight, variants, skills } = window.JD_OUTREACH.draft(f, posting);
-    const recip = { recruiter: 'a recruiter', manager: 'a hiring manager', engineer: 'an engineer on the team', connection: 'someone you know' }[f.recipient];
-    $('li-drafts-hint').textContent = `${f.type === 'note' ? 'Connection notes' : 'InMails'} for ${recip} · leads with your ${highlight.area} experience` + (skills.length ? ` · mentions ${skills.slice(0, 3).join(', ')} from the posting` : '');
+    const recip = { recruiter: 'a recruiter', manager: 'a hiring manager', engineer: 'an engineer on the team', connection: 'someone you know', intro: 'a mutual connection, asking for an intro' }[f.recipient];
+    $('li-drafts-hint').textContent = `${{ note: 'Connection notes', inmail: 'InMails', message: 'Messages' }[f.type]} for ${recip} · leads with your ${highlight.area} experience` + (skills.length ? ` · mentions ${skills.slice(0, 3).join(', ')} from the posting` : '');
     const prof = $('li-profile');
     prof.href = f.profile || 'https://www.linkedin.com/search/results/people/?' + new URLSearchParams({ keywords: `${f.name} ${f.company}` });
     prof.lastChild.textContent = f.profile ? 'Open profile' : 'Find on LinkedIn';
@@ -632,9 +664,9 @@
       const top = el('div', 'draft-top'); top.append(el('span', null, `Option ${i + 1}`));
       const count = el('span', 'count'); top.append(count); card.append(top);
       let subj = null;
-      if (f.type === 'inmail') { subj = el('input'); subj.value = v.subject; subj.setAttribute('aria-label', 'Subject'); subj.maxLength = L.subject; card.append(subj); }
+      if (f.type === 'inmail' && v.subject) { subj = el('input'); subj.value = v.subject; subj.setAttribute('aria-label', 'Subject'); subj.maxLength = L.subject; card.append(subj); }
       const ta = el('textarea'); ta.value = v.body; ta.setAttribute('aria-label', 'Message'); card.append(ta);
-      const limit = f.type === 'note' ? L.note : L.inmail;
+      const limit = f.type === 'note' ? L.note : f.type === 'message' ? L.message : L.inmail;
       const upd = () => { const n = ta.value.length; count.textContent = `${n} / ${limit}`; count.classList.toggle('over', n > limit); };
       ta.addEventListener('input', upd); upd();
       const acts = el('div', 'draft-acts');
@@ -708,7 +740,10 @@
       const ht = el('div'); const u = safeUrl(j['Job Link']);
       const title = el(u ? 'a' : 'b', 'ad-job', j['Job Title'] || 'Role'); if (u) { title.href = u; title.target = '_blank'; title.rel = 'noopener'; }
       ht.append(title, el('small', null, `${j['Company']} · drafted ${j['Date Drafted'] ? fmtDay(j['Date Drafted']) : ''} · ${g.length} ${g.length === 1 ? 'person' : 'people'}`));
-      head.append(av, ht); grp.append(head);
+      const write = el('button', 'btn sm'); write.type = 'button'; write.append(icon('pen'), document.createTextNode('Write a message'));
+      write.addEventListener('click', () => prefillOutreach(j)); write.style.marginLeft = 'auto';
+      head.append(av, ht, write); grp.append(head);
+      const fr = el('div', 'ad-find'); fr.append(findButtons(j['Company'], true)); grp.append(fr);
       const cards = el('div', 'ad-cards');
       for (const d of g) cards.append(draftCard(d, sent));
       grp.append(cards); box.append(grp);

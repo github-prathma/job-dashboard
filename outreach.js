@@ -180,12 +180,54 @@ window.JD_OUTREACH = (() => {
     return sets[f.recipient] || sets.connection;
   }
 
+  // ---------- Intro asks (to a 1st-degree connection who knows someone at the company) ----------
+  function intros(f, h, sk, posting) {
+    const n = first(f.name), r = f.role, c = f.company, link = f.link ? ` (${f.link})` : '';
+    const who = f.target ? f.target : `someone on the team at ${c}`;
+    const team = posting && posting.team ? ` on the ${posting.team} team` : '';
+    const rel = sk.length >= 2 ? ` The role focuses on ${list(sk.slice(0, 3))}, which is what I've been doing day to day.` : '';
+    const sign = `\n\nThanks so much,\n${ME.name}`;
+    return [
+      { subject: '', body: `Hi ${n},\n\nHope you're doing well! I'm applying for the ${r} role${team} at ${c}${link}, and I noticed you're connected with ${who}.${rel} I ${h.long}.\n\nWould you be comfortable introducing me? I'm happy to send a short blurb and my resume so it's easy to forward, and no worries at all if you don't know them well.${sign}` },
+      { subject: '', body: `Hi ${n},\n\nQuick favor to ask: I'm interested in ${r} at ${c}${link}, and I see you know ${who}. My background in ${h.area} fits the role well (I ${h.long}).\n\nWould you be open to making a quick intro? I can draft a short note you could forward.${sign}` },
+    ];
+  }
+
   function draft(f, posting) {
     const text = [posting && posting.text, f.jd].filter(Boolean).join('\n');
     const sk = matchedSkills(text);
     const h = pick(f.role, f.company, text);
-    return { highlight: h, skills: sk, variants: f.type === 'note' ? notes(f, h, sk) : inmails(f, h, sk, posting) };
+    let variants;
+    if (f.recipient === 'intro') variants = intros(f, h, sk, posting);
+    else if (f.type === 'note') variants = notes(f, h, sk);
+    else variants = inmails(f, h, sk, posting);
+    // A regular LinkedIn message to someone you're connected to has no subject line.
+    if (f.type === 'message') variants = variants.map((v) => ({ subject: '', body: v.body }));
+    return { highlight: h, skills: sk, variants };
   }
+
+  // ---------- LinkedIn people searches (opened in your own signed-in browser) ----------
+  // Intuit is left out of ex-colleague searches on purpose: current coworkers.
+  const SCHOOLS = ['"Syracuse University"', '"IIIT Allahabad"', '"Indian Institute of Information Technology Allahabad"'];
+  const PAST_EMPLOYERS = ['Visa', 'PayPal'];
+  function peopleSearch(company, kind) {
+    const base = 'https://www.linkedin.com/search/results/people/?';
+    const c = String(company || '').trim();
+    const q = c.includes(' ') ? `"${c}"` : c;
+    const params = { origin: 'FACETED_SEARCH' };
+    if (kind === 'first') { params.keywords = c; params.network = '["F"]'; }
+    else if (kind === 'second') { params.keywords = c; params.network = '["S"]'; }
+    else if (kind === 'alumni') params.keywords = `${q} AND (${SCHOOLS.join(' OR ')})`;
+    else if (kind === 'colleagues') params.keywords = `${q} AND (${PAST_EMPLOYERS.join(' OR ')})`;
+    else params.keywords = c;
+    return base + new URLSearchParams(params).toString();
+  }
+  const SEARCHES = [
+    { kind: 'first', label: 'Your connections', hint: '1st-degree: ask for a referral' },
+    { kind: 'second', label: '2nd-degree', hint: 'Ask a mutual connection for an intro' },
+    { kind: 'alumni', label: 'Alumni', hint: 'Syracuse or IIIT Allahabad' },
+    { kind: 'colleagues', label: 'Ex-colleagues', hint: 'Also worked at Visa or PayPal' },
+  ];
 
   // ---------- Reading a job posting from its link ----------
   // Greenhouse, Lever and Ashby publish postings through public APIs a browser can read.
@@ -229,5 +271,5 @@ window.JD_OUTREACH = (() => {
     throw new Error('unsupported');
   }
 
-  return { draft, readPosting, matchedSkills, LIMITS: { note: NOTE_LIMIT, subject: 200, inmail: 1900 } };
+  return { draft, readPosting, matchedSkills, peopleSearch, SEARCHES, LIMITS: { note: NOTE_LIMIT, subject: 200, inmail: 1900, message: 8000 } };
 })();
