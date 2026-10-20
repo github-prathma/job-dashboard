@@ -543,19 +543,57 @@
   form.querySelectorAll('input[name="type"]').forEach((x) => x.addEventListener('change', syncFormMode));
   $('li-switch').addEventListener('click', () => { form.querySelector('input[value="note"]').checked = true; syncFormMode(); if (!$('li-drafts-card').hidden) form.requestSubmit(); });
   $('li-clear').addEventListener('click', () => { if (confirm('Clear the sent log in this browser?')) { writeLog([]); renderOutreachStatus(); } });
-  form.addEventListener('reset', () => setTimeout(() => { $('li-drafts-card').hidden = true; $('li-err').textContent = ''; form.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid')); syncFormMode(); }, 0));
+  form.addEventListener('reset', () => setTimeout(() => { $('li-drafts-card').hidden = true; $('li-posting').hidden = true; $('li-err').textContent = ''; form.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid')); syncFormMode(); }, 0));
 
-  form.addEventListener('submit', (e) => {
+  const postingCache = {};
+  function showPosting(kind, build) {
+    const box = $('li-posting'); box.hidden = false; box.className = 'posting' + (kind ? ' ' + kind : ''); box.replaceChildren(); build(box);
+  }
+  form.elements.link.addEventListener('input', () => { $('li-posting').hidden = true; });
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    $('li-err').textContent = '';
+    const link = safeUrl(fval('link')) || '';
+    let posting = null;
+    if (link) {
+      posting = postingCache[link];
+      if (!posting) {
+        showPosting('', (b) => b.append(el('div', 'spinner'), el('span', null, 'Reading the job posting…')));
+        try { posting = await window.JD_OUTREACH.readPosting(link, fval('company')); postingCache[link] = posting; }
+        catch (err) { posting = null; }
+      }
+      if (posting) {
+        if (!fval('company') && posting.company) form.elements.company.value = posting.company;
+        if (!fval('role') && posting.title) form.elements.role.value = posting.title;
+      }
+    }
     const missing = ['name', 'company', 'role'].filter((n) => !fval(n));
     form.querySelectorAll('input').forEach((x) => x.removeAttribute('aria-invalid'));
     missing.forEach((n) => form.elements[n].setAttribute('aria-invalid', 'true'));
-    if (missing.length) { $('li-err').textContent = 'Add the person\'s name, the company and the job title.'; form.elements[missing[0]].focus(); return; }
-    $('li-err').textContent = '';
-    const f = { type: form.elements.type.value, name: fval('name'), company: fval('company'), role: fval('role'), recipient: fval('recipient'), goal: fval('goal'), link: safeUrl(fval('link')) || '', profile: liUrl(fval('profile')) || '' };
-    const { highlight, variants } = window.JD_OUTREACH.draft(f);
+    if (missing.length) { $('li-err').textContent = "Add the person's name" + (missing.length > 1 || missing[0] !== 'name' ? ', the company and the job title' : '') + '.'; form.elements[missing[0]].focus(); }
+
+    const jd = fval('jd');
+    const sk = window.JD_OUTREACH.matchedSkills([posting && posting.text, jd].filter(Boolean).join(' '));
+    if (link && posting) {
+      showPosting('ok', (b) => {
+        b.append(icon('check', 'ic'));
+        const t = el('div'); t.append(el('b', null, `Read from ${posting.source}: `), document.createTextNode([posting.title, posting.team, posting.location].filter(Boolean).join(' · ')));
+        if (sk.length) { const tags = el('div', 'tags'); sk.slice(0, 8).forEach((s) => tags.append(el('span', null, s))); t.append(el('div', null, 'Skills in this posting that are on your resume:'), tags); }
+        else t.append(el('div', null, 'No skills from your resume stood out in this posting, so the drafts lead with the closest achievement.'));
+        b.append(t);
+      });
+    } else if (link && !jd) {
+      showPosting('warn', (b) => { b.append(icon('eye', 'ic')); b.append(el('span', null, "This site doesn't let other pages read its postings (only Greenhouse, Lever and Ashby links can be read). Paste the job description below and draft again for a message tailored to it.")); });
+    } else if (jd) {
+      showPosting(sk.length ? 'ok' : '', (b) => { b.append(icon('check', 'ic')); const t = el('div'); t.append(el('b', null, 'Using the pasted job description. ')); if (sk.length) { const tags = el('div', 'tags'); sk.slice(0, 8).forEach((s) => tags.append(el('span', null, s))); t.append(tags); } b.append(t); });
+    } else $('li-posting').hidden = true;
+    if (missing.length) return;
+
+    const f = { type: form.elements.type.value, name: fval('name'), company: fval('company'), role: fval('role'), recipient: fval('recipient'), goal: fval('goal'), link, jd, profile: liUrl(fval('profile')) || '' };
+    const { highlight, variants, skills } = window.JD_OUTREACH.draft(f, posting);
     const recip = { recruiter: 'a recruiter', manager: 'a hiring manager', engineer: 'an engineer on the team', connection: 'someone you know' }[f.recipient];
-    $('li-drafts-hint').textContent = `${f.type === 'note' ? 'Connection notes' : 'InMails'} for ${recip} · leads with your ${highlight.area} experience`;
+    $('li-drafts-hint').textContent = `${f.type === 'note' ? 'Connection notes' : 'InMails'} for ${recip} · leads with your ${highlight.area} experience` + (skills.length ? ` · mentions ${skills.slice(0, 3).join(', ')} from the posting` : '');
     const prof = $('li-profile');
     prof.href = f.profile || 'https://www.linkedin.com/search/results/people/?' + new URLSearchParams({ keywords: `${f.name} ${f.company}` });
     prof.lastChild.textContent = f.profile ? 'Open profile' : 'Find on LinkedIn';
@@ -588,7 +626,7 @@
       if (subj) mk('Copy subject', 'copy', (b) => copy(subj.value, b));
       mk(f.type === 'note' ? 'Copy note' : 'Copy message', 'copy', (b) => copy(ta.value, b), true);
       mk('Mark as sent', 'check', (b) => {
-        if (f.type === 'note' && ta.value.length > L.note) { count.classList.add('over'); alert('This note is over 200 characters. Shorten it before sending.'); return; }
+        if (f.type === 'note' && ta.value.length > L.note) { count.classList.add('over'); alert(`This note is over ${L.note} characters. Shorten it before sending.`); return; }
         const log = readLog(); log.unshift({ day: todayPT(), at: Date.now(), type: f.type, name: f.name, company: f.company, role: f.role, recipient: f.recipient, profile: f.profile });
         writeLog(log); b.lastChild.textContent = 'Sent'; b.classList.add('done'); b.disabled = true; renderOutreachStatus();
       });

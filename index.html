@@ -213,8 +213,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
 .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fld { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .fld em { font-style: normal; font-weight: 500; }
-.fld input, .fld select, .draft textarea, .draft input { font: inherit; font-size: 14px; font-weight: 500; color: var(--text); background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
-.fld input:focus, .fld select:focus, .draft textarea:focus, .draft input:focus { outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 0; border-color: var(--brand); background: var(--panel); }
+.fld input, .fld select, .fld textarea, .draft textarea, .draft input { font: inherit; font-size: 14px; font-weight: 500; color: var(--text); background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
+.fld input:focus, .fld select:focus, .fld textarea:focus, .draft textarea:focus, .draft input:focus { outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 0; border-color: var(--brand); background: var(--panel); }
 .fld input[aria-invalid="true"] { border-color: var(--bad); }
 .seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--grid); width: max-content; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
@@ -222,6 +222,14 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
 .seg input:checked + span { background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
 .seg input:focus-visible + span { outline: 2px solid var(--brand); }
 .form-actions { display: flex; gap: 8px; }
+.fld textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+.posting { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; font-size: 13px; border: 1px solid var(--line); background: var(--canvas); }
+.posting.ok { border-color: color-mix(in srgb, var(--s-offer) 45%, var(--line)); background: color-mix(in srgb, var(--s-offer) 8%, var(--panel)); }
+.posting.warn { border-color: color-mix(in srgb, var(--s-ready) 45%, var(--line)); background: color-mix(in srgb, var(--s-ready) 8%, var(--panel)); }
+.posting b { color: var(--ink); }
+.posting .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.posting .tags span { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background: color-mix(in srgb, var(--s-offer) 16%, transparent); color: color-mix(in srgb, var(--s-offer) 75%, var(--ink)); }
+.posting .spinner { width: 16px; height: 16px; border-width: 2px; margin: 2px 0 0; flex: none; }
 .form-err { color: var(--bad); font-size: 13px; }
 .form-err:empty { display: none; }
 .inmail-count { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
@@ -534,7 +542,9 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
                 <option value="consider">A look at my application</option>
               </select></label>
           </div>
-          <label class="fld"><span>Job link <em>optional</em></span><input name="link" type="url" placeholder="https://…" autocomplete="off"></label>
+          <label class="fld"><span>Job link <em>optional, makes the message specific to the posting</em></span><input name="link" type="url" placeholder="https://jobs.lever.co/… or boards.greenhouse.io/…" autocomplete="off"></label>
+          <div class="posting" id="li-posting" hidden></div>
+          <label class="fld" id="li-jd-wrap"><span>Job description <em>optional, paste it if the link can't be read</em></span><textarea name="jd" rows="4" placeholder="Paste the requirements or the whole posting"></textarea></label>
           <label class="fld"><span>Their LinkedIn profile <em>optional</em></span><input name="profile" type="url" placeholder="https://www.linkedin.com/in/…" autocomplete="off"></label>
           <div class="form-err" id="li-err"></div>
           <div class="form-actions">
@@ -554,7 +564,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
           <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--s-ready)"><svg class="ic"><use href="#i-target"/></svg></span><div><h2>What works</h2><p class="hint">Short, specific, one clear ask</p></div></div></div>
           <ul class="tips">
             <li>Recruiters get the sponsorship line; others don't, so the ask stays simple.</li>
-            <li>Connection notes must fit in 200 characters. Edit the draft if the counter turns red.</li>
+            <li>Connection notes must fit in 300 characters. Edit the draft if the counter turns red.</li>
+            <li>Paste the job link: the drafts then name skills from the posting that are also on your resume.</li>
             <li>Send to a hiring manager or an engineer on the team before a recruiter when you want a referral.</li>
           </ul>
         </div>
