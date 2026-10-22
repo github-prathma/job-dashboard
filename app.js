@@ -12,6 +12,30 @@
   }
   // drive.file: the app can only see files it created (your Job Agent workspace) — nothing else in your Drive.
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+  const SELF_URL = location.origin + location.pathname.replace(/index\.html$/, '');
+
+  // ---------- Same-tab sign-in (no popup) ----------
+  // Google sends the user back here with #access_token=...; keep it for this tab and clean the address bar.
+  let redirectError = '';
+  (() => {
+    const h = location.hash.slice(1);
+    if (!/(^|&)(access_token|error)=/.test(h)) return;
+    const q = new URLSearchParams(h);
+    let expected = null; try { expected = sessionStorage.getItem('jd_state'); sessionStorage.removeItem('jd_state'); } catch (e) { /* storage blocked */ }
+    history.replaceState(null, '', SELF_URL);
+    if (!expected || q.get('state') !== expected) { redirectError = 'Sign-in didn\u2019t finish. Please try again.'; return; }
+    if (q.get('error')) { redirectError = q.get('error') === 'access_denied' ? 'Sign-in was cancelled.' : 'Sign-in failed: ' + q.get('error'); return; }
+    if (!String(q.get('scope') || '').split(' ').includes(SCOPES)) { redirectError = 'Google didn\u2019t give the app access to its Drive files. Sign in again and keep that box ticked.'; return; }
+    try { sessionStorage.setItem('jd_tok', JSON.stringify({ token: q.get('access_token'), tokenExpiry: Date.now() + (Number(q.get('expires_in')) || 3600) * 1000 - 60000, scope: SCOPES })); } catch (e) { /* storage blocked */ }
+  })();
+  function signInSameTab(consent) {
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { sessionStorage.setItem('jd_state', state); } catch (e) { /* storage blocked */ }
+    location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+      client_id: C.GOOGLE_CLIENT_ID, redirect_uri: SELF_URL, response_type: 'token', scope: SCOPES,
+      include_granted_scopes: 'true', state, prompt: consent ? 'consent' : 'select_account',
+    }));
+  }
   const $ = (id) => document.getElementById(id);
   const fmt = d3.format(',');
   const pct = d3.format('.0%');
@@ -99,13 +123,20 @@
       error_callback: (err) => showGateError('Sign-in was closed or blocked (' + (err && err.type) + '). Allow pop-ups for this site and try again.'),
     });
     $('signin').disabled = false;
+    if (redirectError) showGate('signin', redirectError);
     try {
       const saved = JSON.parse(sessionStorage.getItem('jd_tok') || 'null');
       // A token saved before the permission change can't create files, so ignore it.
       if (saved && saved.scope === SCOPES && saved.tokenExpiry > Date.now()) { token = saved.token; tokenExpiry = saved.tokenExpiry; start(); }
     } catch (e) {}
   }
-  $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : '' }); } });
+  $('signin').addEventListener('click', () => {
+    if (!tokenClient) return;
+    $('gate-err').textContent = '';
+    $('signin-tab').hidden = false; // in case the popup is blocked or stays blank
+    tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : '' });
+  });
+  $('signin-tab').addEventListener('click', () => signInSameTab(needConsent));
   $('signout').addEventListener('click', () => {
     if (token) google.accounts.oauth2.revoke(token, () => {});
     clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; drafts = []; usingSample = false; realData = null; WS = null;

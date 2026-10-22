@@ -122,7 +122,7 @@ Everyone else can skip this. You do it once, and then anyone can sign in.
    - **Branding**: app name (e.g. "Job Agent"), support email, and your site address as the home page.
    - **Audience**: user type **External**, then click **Publish app** so the status is **In production**. No test users needed.
    - **Data access**: add only `https://www.googleapis.com/auth/drive.file`. Google treats it as non-sensitive, so the app doesn't need Google's review.
-   - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash).
+   - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash). Under **Authorized redirect URIs** add your full site address with the trailing slash, `https://<your-github-username>.github.io/job-dashboard/` (used by "Sign in in this tab" when a browser blocks Google's sign-in window).
 4. Put the client ID in `config.js` → `GOOGLE_CLIENT_ID`.
 5. Optional (skip it if you like; new users never need it). For **I already have a tracker**: in **APIs & Services → Library** enable **Google Picker API**, then **Credentials → Create credentials → API key**. Restrict it to **Websites** `https://<your-github-username>.github.io/*` and to the **Google Picker API**, and put it in `config.js` → `GOOGLE_API_KEY`.
 6. Commit.
