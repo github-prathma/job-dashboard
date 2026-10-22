@@ -122,7 +122,7 @@ Everyone else can skip this. You do it once, and then anyone can sign in.
    - **Data access**: add only `https://www.googleapis.com/auth/drive.file`. Google treats it as non-sensitive, so the app doesn't need Google's review.
    - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash).
 4. Put the client ID in `config.js` → `GOOGLE_CLIENT_ID`.
-5. Optional, for **I already have a tracker**: in **APIs & Services → Library** enable **Google Picker API**, then **Credentials → Create credentials → API key**. Restrict it to **Websites** `https://<your-github-username>.github.io/*` and to the **Google Picker API**, and put it in `config.js` → `GOOGLE_API_KEY`.
+5. Optional (skip it if you like; new users never need it). For **I already have a tracker**: in **APIs & Services → Library** enable **Google Picker API**, then **Credentials → Create credentials → API key**. Restrict it to **Websites** `https://<your-github-username>.github.io/*` and to the **Google Picker API**, and put it in `config.js` → `GOOGLE_API_KEY`.
 6. Commit.
 
 Neither the client ID nor the restricted API key is a secret: Google only accepts it from the site address you listed.

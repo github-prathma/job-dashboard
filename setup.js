@@ -29,7 +29,7 @@ window.JD_SETUP = (() => {
     document.querySelectorAll('#su-steps li').forEach((li) => {
       const k = +li.dataset.step; li.classList.toggle('on', k === n); li.classList.toggle('done', k < n);
     });
-    $('su-back').style.visibility = n >= 1 && !created.done ? 'visible' : 'hidden';
+    $('su-back').style.visibility = (n > 1 || (n === 1 && (window.JD_CONFIG || {}).GOOGLE_API_KEY)) && !created.done ? 'visible' : 'hidden';
     $('su-skip').hidden = n !== 4;
     $('su-next').innerHTML = '';
     $('su-next').append(n === 5 ? 'Create my workspace' : 'Continue');
@@ -323,7 +323,8 @@ window.JD_SETUP = (() => {
     try { zone = new Intl.DateTimeFormat('en-US', { timeZone: c.tz, timeZoneName: 'long' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName').value; } catch (e) { /* keep IANA name */ }
     $('su-tz').textContent = `Times are in your time zone (${zone}). These are when you'll schedule the agents in Claude.`;
     $('su-connect-note').textContent = '';
-    show(0);
+    // Without a Picker API key there's nothing to choose: go straight to the setup questions.
+    show((window.JD_CONFIG || {}).GOOGLE_API_KEY ? 0 : 1);
   }
 
   return { open, agentPrompt, copyPrompt };
