@@ -197,7 +197,7 @@ window.JD_SETUP = (() => {
         return true;
       });
     } catch (e) {
-      $('su-err').textContent = 'Something went wrong: ' + e.message.slice(0, 160) + '. Click Try again; finished steps won’t be repeated.';
+      $('su-err').textContent = /confirm access/.test(e.message) ? e.message + '.' : 'Something went wrong: ' + e.message.slice(0, 160) + '. Click Try again; finished steps won’t be repeated.';
       $('su-nav').hidden = false; $('su-next').textContent = 'Try again'; $('su-back').style.visibility = 'hidden';
       return;
     }

@@ -23,6 +23,7 @@
   const AVATAR = ['#2563eb', '#0ea5e9', '#8b5cf6', '#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#14b8a6', '#6366f1', '#ec4899'];
   const PALETTE = ['--brand', '--s-referral', '--s-offer', '--s-ready', '--s-rejected', '--brand-2', '--s-interview', '--s-applied'];
 
+  let needConsent = false;
   let token = null, tokenExpiry = 0, tokenClient = null, pendingResolve = null;
   let PROFILE = null;
   let drafts = [], jobs = [], runs = [], lastLoaded = null, timer = null, usingSample = false, realData = null;
@@ -82,9 +83,17 @@
       scope: SCOPES,
       callback: (resp) => {
         if (resp.error) { showGateError('Sign-in failed: ' + resp.error); return; }
-        token = resp.access_token;
+        // Google lets people untick permissions on the consent screen; without Drive access nothing works.
+        const o = google.accounts.oauth2;
+        if (o.hasGrantedAllScopes && !o.hasGrantedAllScopes(resp, SCOPES)) {
+          clearToken(); needConsent = true; pendingResolve = null;
+          $('setup').hidden = true; $('app').hidden = true;
+          showGate('signin', 'Google didn\u2019t give the app access to its Drive files. Click Sign in again and keep the box for "the specific Google Drive files you use with this app" ticked.');
+          return;
+        }
+        token = resp.access_token; needConsent = false;
         tokenExpiry = Date.now() + (Number(resp.expires_in) || 3600) * 1000 - 60000;
-        try { sessionStorage.setItem('jd_tok', JSON.stringify({ token, tokenExpiry })); } catch (e) {}
+        try { sessionStorage.setItem('jd_tok', JSON.stringify({ token, tokenExpiry, scope: SCOPES })); } catch (e) {}
         if (pendingResolve) { pendingResolve(); pendingResolve = null; } else start();
       },
       error_callback: (err) => showGateError('Sign-in was closed or blocked (' + (err && err.type) + '). Allow pop-ups for this site and try again.'),
@@ -92,10 +101,11 @@
     $('signin').disabled = false;
     try {
       const saved = JSON.parse(sessionStorage.getItem('jd_tok') || 'null');
-      if (saved && saved.tokenExpiry > Date.now()) { token = saved.token; tokenExpiry = saved.tokenExpiry; start(); }
+      // A token saved before the permission change can't create files, so ignore it.
+      if (saved && saved.scope === SCOPES && saved.tokenExpiry > Date.now()) { token = saved.token; tokenExpiry = saved.tokenExpiry; start(); }
     } catch (e) {}
   }
-  $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: '' }); } });
+  $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : '' }); } });
   $('signout').addEventListener('click', () => {
     if (token) google.accounts.oauth2.revoke(token, () => {});
     clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; drafts = []; usingSample = false; realData = null; WS = null;
@@ -111,7 +121,7 @@
   });
   function ensureToken() {
     if (token && Date.now() < tokenExpiry) return Promise.resolve();
-    return new Promise((resolve) => { pendingResolve = resolve; tokenClient.requestAccessToken({ prompt: '' }); });
+    return new Promise((resolve) => { pendingResolve = resolve; tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : '' }); });
   }
   // opts: { method, json, body, headers }
   async function api(url, opts = {}, retried) {
@@ -121,7 +131,15 @@
     if (opts.json !== undefined) { body = JSON.stringify(opts.json); headers['Content-Type'] = 'application/json'; }
     const r = await fetch(url, { method: opts.method || (body ? 'POST' : 'GET'), headers, body });
     if (r.status === 401 && !retried) { token = null; await ensureToken(); return api(url, opts, true); }
-    if (!r.ok) { const t = await r.text(); throw new Error(`${r.status}: ${t.slice(0, 200)}`); }
+    if (!r.ok) {
+      const t = await r.text();
+      // An older or partial sign-in. The next click (Try again / Sign in) reopens Google's consent screen.
+      if (r.status === 403 && /insufficient.*scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(t)) {
+        clearToken(); needConsent = true;
+        throw new Error('Google needs you to confirm access to your Drive files. Click the button again and allow access');
+      }
+      throw new Error(`${r.status}: ${t.slice(0, 200)}`);
+    }
     const t = await r.text();
     return t ? JSON.parse(t) : {};
   }
