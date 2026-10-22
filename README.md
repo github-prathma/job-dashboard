@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" width="96" alt="Logo: a paper plane whose dotted trail draws a chat bubble"></p>
+
 # Job Search Command Center
 
 **Try it:** https://github-prathma.github.io/job-dashboard/ (sign in with any Google account, or click **Or look around with sample data first**).
@@ -140,3 +142,4 @@ Neither the client ID nor the restricted API key is a secret: Google only accept
 | `agent/agent-prompt.md` | Template for the agent instructions (the wizard fills it in for you) |
 | `agent/search-config-template.md` | What the SEARCH CONFIG doc covers |
 | `docs/demo.gif`, `docs/demo.mp4` | The demo shown at the top of this page |
+| `assets/` | Logo, browser-tab icons, and `logo-120.png` for Google's sign-in branding |

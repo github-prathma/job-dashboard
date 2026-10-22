@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Job Search Command Center</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="theme-color" content="#7c3aed">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -49,7 +53,7 @@ a { color: inherit; }
 .gate-art::after { content: ""; position: absolute; inset: auto -20% -30% auto; width: 520px; height: 520px; border-radius: 50%;
   background: radial-gradient(circle, color-mix(in srgb, var(--brand) 55%, transparent), transparent 65%); opacity: .55; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
-.brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+.brand-mark { width: 36px; height: 36px; border-radius: 10px; display: block; box-shadow: 0 4px 14px -4px rgba(147, 51, 234, .55); }
 .gate-art h2 { font-size: 40px; line-height: 1.1; letter-spacing: -.02em; font-weight: 800; margin: 0 0 14px; max-width: 14ch; position: relative; z-index: 1; }
 .gate-art p { color: var(--side-text); max-width: 42ch; margin: 0; position: relative; z-index: 1; }
 .flow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; position: relative; z-index: 1; }
@@ -466,7 +470,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
 <!-- ============ Sign-in ============ -->
 <div class="gate" id="gate">
   <div class="gate-art">
-    <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
+    <div class="brand"><img class="brand-mark" src="assets/favicon.svg" alt="">Job Agent</div>
     <div>
       <h2>Your job search, run by agents.</h2>
       <p>Fresh senior and staff roles twice a day, a tailored resume for each, and referral drafts ready to send. Everything you apply to is tracked here.</p>
@@ -505,7 +509,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
 <!-- ============ Dashboard ============ -->
 <div class="setup" id="setup" hidden>
   <aside class="setup-art">
-    <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
+    <div class="brand"><img class="brand-mark" src="assets/favicon.svg" alt="">Job Agent</div>
     <div>
       <h2>Let's set up your job search.</h2>
       <p>Answer a few questions. We'll create a folder in your Google Drive with your tracker, your resume and your search settings. You can change any answer later.</p>
@@ -645,7 +649,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
 
 <div class="shell" id="app" hidden>
   <aside class="side">
-    <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
+    <div class="brand"><img class="brand-mark" src="assets/favicon.svg" alt="">Job Agent</div>
     <nav class="nav">
       <a href="#/overview" data-page="overview" class="on"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
       <a href="#/analytics" data-page="analytics"><svg class="ic"><use href="#i-bars"/></svg>Analytics</a>
