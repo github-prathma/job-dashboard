@@ -70,6 +70,8 @@ a { color: inherit; }
 .gbtn:disabled { opacity: .5; cursor: default; }
 .gbtn svg { width: 18px; height: 18px; }
 .fine { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--muted); margin-top: 18px; }
+.legal { margin: 16px 0 0; font-size: 12px; color: var(--muted); text-align: center; }
+.legal a { color: var(--muted); }
 .err { color: var(--bad); font-size: 13px; margin-top: 12px; }
 .spinner { width: 34px; height: 34px; margin: 4px 0 14px; border-radius: 50%; border: 3px solid var(--grid); border-top-color: var(--brand); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -501,6 +503,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
         <p>Opening your job tracker in Google Drive.</p>
       </div>
       <div class="err" id="gate-err"></div>
+      <p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
       <div class="fine"><svg class="ic sm"><use href="#i-lock"/></svg><span>The app can only open the files it creates for you in your Drive, nothing else. Your data goes straight from Google to this browser and is never stored anywhere else.</span></div>
     </div>
   </div>
