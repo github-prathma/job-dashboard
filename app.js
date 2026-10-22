@@ -45,7 +45,14 @@
     folder: (id) => `https://drive.google.com/drive/folders/${id}`,
   };
   function applyLinks() {
-    const L = WS ? { tracker: U.sheet(WS.tracker), config: U.doc(WS.config), resume: U.doc(WS.resume), resumes: U.folder(WS.resumes), outreach: U.folder(WS.outreach), runs: U.folder(WS.runlogs), folder: U.folder(WS.folder), profile: U.sheet(WS.tracker) + '#gid=' + (WS.profileGid || '2003') } : {};
+    // Trackers connected (not created) by the site keep their links in the Profile tab instead.
+    const PL = (PROFILE && PROFILE.links) || {};
+    const pick = (id, make, link) => (id ? make(id) : safeUrl(link) || (WS.folder ? U.folder(WS.folder) : ''));
+    const L = WS ? {
+      tracker: U.sheet(WS.tracker), profile: U.sheet(WS.tracker) + (WS.profileGid ? '#gid=' + WS.profileGid : ''),
+      config: pick(WS.config, U.doc, PL.config), resume: pick(WS.resume, U.doc, PL.resume), resumes: pick(WS.resumes, U.folder, PL.resumes),
+      outreach: pick(WS.outreach, U.folder, PL.outreach), runs: pick(WS.runlogs, U.folder, PL.runs), folder: WS.folder ? U.folder(WS.folder) : '',
+    } : {};
     document.querySelectorAll('[data-link]').forEach((a) => { if (L[a.dataset.link]) { a.href = L[a.dataset.link]; a.removeAttribute('aria-disabled'); } else { a.removeAttribute('href'); a.setAttribute('aria-disabled', 'true'); } });
   }
   fillSettings();
@@ -130,7 +137,7 @@
     const f = (res.files || [])[0];
     if (!f) return null;
     const a = f.appProperties || {};
-    return { tracker: f.id, folder: a.folder, config: a.config, resume: a.resume, resumes: a.resumes, outreach: a.outreach, runlogs: a.runlogs, profileGid: a.profileGid };
+    return { tracker: f.id, folder: a.folder, config: a.config, resume: a.resume, resumes: a.resumes, outreach: a.outreach, runlogs: a.runlogs, profileGid: a.profileGid, jobsTab: a.jobsTab || 'Jobs' };
   }
   function applyProfile(rows) {
     const get = (k) => rows.find((r) => String(r[0] || '').trim().toLowerCase() === k);
@@ -139,6 +146,7 @@
       firstName: v('first name'), fullName: v('full name'), pitch: v('pitch'), shortPitch: v('pitch', 2),
       sponsorship: v('work authorization'), shortSponsorship: v('work authorization', 2),
       schools: v('schools'), pastEmployers: v('past employers'), skills: v('skills'),
+      links: { config: v('search config link'), resume: v('base resume link'), resumes: v('tailored resumes folder'), outreach: v('outreach drafts folder'), runs: v('run logs folder') },
       highlights: rows.filter((r) => String(r[0] || '').trim().toLowerCase() === 'highlight').map((r) => ({ long: String(r[1] || '').trim(), short: String(r[2] || '').trim(), area: String(r[3] || '').trim(), keywords: String(r[4] || '') })),
     };
     window.JD_OUTREACH.setProfile(p);
@@ -160,12 +168,13 @@
     try {
       const tab = (range) => api(SHEETS + WS.tracker + '/values/' + encodeURIComponent(range));
       const [sheet, runTab, outreach, profile] = await Promise.all([
-        tab("'Jobs'!A1:P1000"),
+        tab(`'${WS.jobsTab || 'Jobs'}'!A1:P1000`),
         tab("'Runs'!A1:G500").catch(() => ({ values: [] })),
         tab("'Outreach'!A1:M2000").catch(() => ({ values: [] })),
         tab("'Profile'!A1:E80").catch(() => ({ values: [] })),
       ]);
       PROFILE = applyProfile((profile.values || []).slice(1));
+      applyLinks();
       const toRows = (vals) => { const h = vals[0] || []; return vals.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(h.map((c, i) => [c, r[i] ?? '']))); };
       const draftRows = toRows(outreach.values || []);
       const values = sheet.values || [];
@@ -198,7 +207,7 @@
     if (!WS) {
       // First visit with this Google account: build the workspace.
       $('gate').hidden = true; $('app').hidden = true;
-      window.JD_SETUP.open({ api, tz: S.tz, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
+      window.JD_SETUP.open({ api, tz: S.tz, getToken: async () => { await ensureToken(); return token; }, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
       return;
     }
     applyLinks();

@@ -364,6 +364,12 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
 .hl-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; color: var(--muted); }
 #su-highlights { display: grid; gap: 12px; }
 #su-add-hl { justify-self: start; }
+.choice { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.choice:hover, .choice:focus-visible { border-color: var(--brand); box-shadow: var(--shadow); }
+.choice b { display: block; color: var(--ink); font-size: 15px; }
+.choice small { color: var(--muted); font-size: 13px; }
+.choice .ic.sm { color: var(--muted); }
+.choice[disabled] { opacity: .5; cursor: default; }
 .setup-nav { display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
 .setup-nav .grow { flex: 1; }
 .su-tree, .su-tree ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -515,7 +521,15 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
   </aside>
   <main class="setup-main">
     <form class="setup-card" id="su-form" novalidate>
-      <section data-step="1">
+      <section data-step="0">
+        <p class="eyebrow">Welcome</p>
+        <h1>Is this your first time here?</h1>
+        <p class="lead">We couldn't find a Job Agent tracker that this site has opened before for this Google account.</p>
+        <button class="choice" type="button" id="su-new"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-zap"/></svg></span><span><b>I'm new, set me up</b><small>Answer a few questions and we'll create everything in your Google Drive (about 3 minutes).</small></span><svg class="ic sm"><use href="#i-arrow-right"/></svg></button>
+        <button class="choice" type="button" id="su-connect"><span class="kpi-icon" style="--k: var(--s-offer)"><svg class="ic"><use href="#i-sheet"/></svg></span><span><b>I already have a Job Application Tracker</b><small>Pick it from your Drive. No questions; your jobs, drafts and profile stay as they are.</small></span><svg class="ic sm"><use href="#i-arrow-right"/></svg></button>
+        <p class="hint" id="su-connect-note"></p>
+      </section>
+      <section data-step="1" hidden>
         <p class="eyebrow">Step 1 of 5</p>
         <h1>About you</h1>
         <p class="lead">Used in your messages to recruiters and in the greeting.</p>

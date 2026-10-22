@@ -50,6 +50,10 @@ No coding, no Google Cloud, no API keys.
 
    Without the agents, the dashboard still works: type jobs into the **Jobs** tab yourself.
 
+**Coming back later** (any browser, any device): just sign in with the same Google account. The site finds your tracker and opens your dashboard; you're only asked questions once.
+
+**Already have a tracker** (for example one your agents made before this site existed)? On the first screen choose **I already have a Job Application Tracker** and pick it from your Drive. Nothing is asked or changed except adding any missing tabs (Outreach, Runs, Profile).
+
 **To change your details later,** edit the **Profile** tab of your tracker (Files and runs → **Edit my profile**). Search rules live in the SEARCH CONFIG doc.
 
 ---
@@ -117,9 +121,11 @@ Everyone else can skip this. You do it once, and then anyone can sign in.
    - **Audience**: user type **External**, then click **Publish app** so the status is **In production**. No test users needed.
    - **Data access**: add only `https://www.googleapis.com/auth/drive.file`. Google treats it as non-sensitive, so the app doesn't need Google's review.
    - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash).
-4. Put the client ID in `config.js` → `GOOGLE_CLIENT_ID` and commit.
+4. Put the client ID in `config.js` → `GOOGLE_CLIENT_ID`.
+5. Optional, for **I already have a tracker**: in **APIs & Services → Library** enable **Google Picker API**, then **Credentials → Create credentials → API key**. Restrict it to **Websites** `https://<your-github-username>.github.io/*` and to the **Google Picker API**, and put it in `config.js` → `GOOGLE_API_KEY`.
+6. Commit.
 
-The client ID isn't a secret: Google only accepts it from the site address you listed.
+Neither the client ID nor the restricted API key is a secret: Google only accepts it from the site address you listed.
 
 ---
 

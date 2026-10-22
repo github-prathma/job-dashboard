@@ -29,11 +29,11 @@ window.JD_SETUP = (() => {
     document.querySelectorAll('#su-steps li').forEach((li) => {
       const k = +li.dataset.step; li.classList.toggle('on', k === n); li.classList.toggle('done', k < n);
     });
-    $('su-back').style.visibility = n > 1 && !created.done ? 'visible' : 'hidden';
+    $('su-back').style.visibility = n >= 1 && !created.done ? 'visible' : 'hidden';
     $('su-skip').hidden = n !== 4;
     $('su-next').innerHTML = '';
     $('su-next').append(n === 5 ? 'Create my workspace' : 'Continue');
-    $('su-nav').hidden = !!created.done;
+    $('su-nav').hidden = !!created.done || n === 0;
     $('su-err').textContent = '';
     const f = form().querySelector(`section[data-step="${n}"] input:not([type=radio]):not([type=file])`);
     if (f && n < 5) setTimeout(() => f.focus(), 30);
@@ -209,6 +209,62 @@ window.JD_SETUP = (() => {
     document.querySelectorAll('#su-steps li').forEach((li) => { li.classList.remove('on'); li.classList.add('done'); });
   }
 
+  // ---------- Connect a tracker this site didn't create (Google Picker grants access to just that file) ----------
+  function loadPicker() {
+    if (window.google && google.picker) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const done = () => window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('could not load the Google file picker')) });
+      if (window.gapi) return done();
+      const sc = document.createElement('script'); sc.src = 'https://apis.google.com/js/api.js';
+      sc.onload = done; sc.onerror = () => reject(new Error('could not load the Google file picker'));
+      document.head.append(sc);
+    });
+  }
+  async function connectExisting() {
+    const note = $('su-connect-note');
+    const key = (window.JD_CONFIG || {}).GOOGLE_API_KEY;
+    if (!key) { note.textContent = 'Connecting an existing tracker isn\u2019t turned on for this site yet (the site owner needs to add a Google API key). You can still choose "I\u2019m new".'; return; }
+    note.textContent = 'Opening your Google Drive…';
+    try {
+      await loadPicker();
+      const token = await ctx.getToken();
+      const view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS).setMode(google.picker.DocsViewMode.LIST).setQuery('Job Application Tracker');
+      new google.picker.PickerBuilder()
+        .addView(view).setOAuthToken(token).setDeveloperKey(key)
+        .setAppId(String(window.JD_CONFIG.GOOGLE_CLIENT_ID).split('-')[0])
+        .setTitle('Pick your Job Application Tracker')
+        .setCallback((d) => {
+          if (d.action === google.picker.Action.PICKED) attach(d.docs[0].id).catch((e) => { note.textContent = 'Could not connect that sheet: ' + e.message.slice(0, 160); });
+          else if (d.action === google.picker.Action.CANCEL) note.textContent = '';
+        })
+        .build().setVisible(true);
+    } catch (e) { note.textContent = 'Could not open the file picker: ' + e.message.slice(0, 160); }
+  }
+  async function attach(id) {
+    const note = $('su-connect-note');
+    note.textContent = 'Connecting your tracker…';
+    const meta = await api(SHEETS + id + '?fields=sheets.properties(sheetId,title)');
+    const tabs = meta.sheets.map((x) => x.properties);
+    const has = (t) => tabs.find((x) => x.title.toLowerCase() === t.toLowerCase());
+    const jobsTab = (has('Jobs') || tabs[0]).title;
+    const missing = ['Outreach', 'Runs', 'Profile'].filter((t) => !has(t));
+    if (missing.length) {
+      await api(SHEETS + id + ':batchUpdate', { json: { requests: missing.map((title) => ({ addSheet: { properties: { title, gridProperties: { frozenRowCount: 1 } } } })) } });
+      const blankProfile = [HEADERS.Profile, ...['First name', 'Full name', 'Pitch', 'Work authorization', 'Schools', 'Past employers', 'Skills', 'Highlight', 'Morning run', 'Evening run', 'Time zone', 'Daily job limit', 'InMails per day'].map((f) => [f, f === 'Time zone' ? ctx.tz : ''])];
+      await api(SHEETS + id + '/values:batchUpdate', { json: { valueInputOption: 'RAW', data: missing.map((t) => ({ range: `'${t}'!A1`, values: t === 'Profile' ? blankProfile : [HEADERS[t]] })) } });
+    }
+    const after = missing.includes('Profile') ? await api(SHEETS + id + '?fields=sheets.properties(sheetId,title)') : meta;
+    const prof = after.sheets.map((x) => x.properties).find((x) => x.title.toLowerCase() === 'profile');
+    const file = await api(`${DRIVE}/${id}?fields=parents`);
+    const folder = (file.parents || [])[0] || '';
+    const props = { jobAgentRole: 'tracker', jobsTab, profileGid: String(prof ? prof.sheetId : '') };
+    if (folder) props.folder = folder;
+    await api(`${DRIVE}/${id}?fields=id`, { method: 'PATCH', json: { appProperties: props } });
+    note.textContent = '';
+    $('setup').hidden = true;
+    ctx.onDone({ tracker: id, folder, jobsTab, profileGid: props.profileGid });
+  }
+
   // ---------- Agent instructions (filled with this user's IDs) ----------
   async function agentPrompt(ws, who) {
     const r = await fetch('agent/agent-prompt.md', { cache: 'no-store' });
@@ -240,7 +296,9 @@ window.JD_SETUP = (() => {
       if (step < 5) { if (validate(step)) show(step + 1); return; }
       create();
     });
-    $('su-back').addEventListener('click', () => { if (step > 1) show(step - 1); });
+    $('su-back').addEventListener('click', () => { if (step >= 1) show(step - 1); });
+    $('su-new').addEventListener('click', () => show(1));
+    $('su-connect').addEventListener('click', connectExisting);
     $('su-skip').addEventListener('click', () => show(5));
     $('su-add-hl').addEventListener('click', () => addHighlight());
     form().querySelectorAll('[name=needSponsorship]').forEach((r) => r.addEventListener('change', () => {
@@ -264,7 +322,8 @@ window.JD_SETUP = (() => {
     let zone = c.tz;
     try { zone = new Intl.DateTimeFormat('en-US', { timeZone: c.tz, timeZoneName: 'long' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName').value; } catch (e) { /* keep IANA name */ }
     $('su-tz').textContent = `Times are in your time zone (${zone}). These are when you'll schedule the agents in Claude.`;
-    show(1);
+    $('su-connect-note').textContent = '';
+    show(0);
   }
 
   return { open, agentPrompt, copyPrompt };
