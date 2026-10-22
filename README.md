@@ -1,6 +1,6 @@
 # Job Search Command Center
 
-**Live demo:** https://github-prathma.github.io/job-dashboard/ (sign-in only works for accounts added as test users; click **Preview with sample data** after signing in to see the layout).
+**Try it:** https://github-prathma.github.io/job-dashboard/ (sign in with any Google account, or click **Or look around with sample data first**).
 
 ![Demo: sign in, overview, analytics, jobs, LinkedIn outreach, agent drafts and the dark theme](docs/demo.gif)
 
@@ -8,7 +8,7 @@
 
 A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
-**Your data stays in your own Google Drive.** The website holds no data. When you sign in with Google, your browser reads your tracker sheet directly from Drive. The dashboard can only *read*; it can't change or delete anything.
+**Your data stays in your own Google Drive.** The website holds no data. The first time you sign in, it creates a **Job Agent** folder in your Drive with everything it needs. Google only lets the app open the files it created there; it can't see anything else in your Drive.
 
 **Nothing is sent for you.** The dashboard and the agents prepare everything; you apply and send messages yourself.
 
@@ -22,104 +22,35 @@ A personal dashboard for your job search. It shows the jobs your agents found, a
  1. Find new job postings        ──►   Job Application Tracker (sheet)   ──►   Jobs, charts, "Next up"
  2. Tailor your resume per job   ──►   Tailored Resumes/<Company>/        ──►   Resume buttons
  3. Find people + draft messages ──►   Outreach tab + draft docs          ──►   Agent drafts page
- 4. Write a run log              ──►   Run Logs/                          ──►   Files page
+ 4. Log the run                  ──►   Runs tab + Run Logs/               ──►   Files and runs page
 ```
 
-You can use the dashboard without the agents too: type jobs into the sheet yourself and the dashboard still works.
+
 
 ---
 
-## Setup (about 30 minutes, once)
+## Getting started (about 5 minutes)
 
-### Step 1. Copy this repo
-Click **Fork** at the top of this page on GitHub. You now have your own copy, e.g. `github.com/<you>/job-dashboard`.
+No coding, no Google Cloud, no API keys.
 
-### Step 2. Set up your Google Drive
-Create one folder in Google Drive (for example "Job Agent") with these items inside:
+1. **Open the site** and click **Sign in with Google**. Use any Google account; Google asks you to let the app "see, edit, create and delete only the specific Google Drive files you use with this app". That's the narrowest Drive permission Google offers.
+2. **Answer the setup questions** (name, the roles you want, your resume, a few highlights). The wizard then creates this in your Drive:
 
-| Name | Type | What it's for |
-|---|---|---|
-| Job Application Tracker | Google Sheet | One row per job. **The dashboard reads this.** |
-| Run Logs | Folder | One Google Doc per agent run. **The dashboard lists these.** |
-| SEARCH CONFIG (edit me) | Google Doc | Your rules for the agents. Start from [`agent/search-config-template.md`](agent/search-config-template.md). |
-| BASE RESUME | Google Doc | Your resume. Update it any time; the agents always read the latest version. |
-| Tailored Resumes | Folder | The agents save one resume per job here, in a folder per company. |
-| Referral Outreach Drafts | Folder | The agents save outreach drafts here. |
+   | In your **Job Agent** folder | What it's for |
+   |---|---|
+   | Job Application Tracker (Google Sheet) | Tabs: **Jobs** (one row per job), **Outreach** (drafted messages), **Runs** (one row per agent run), **Profile** (your details for messages) |
+   | SEARCH CONFIG (edit me) | Your rules for the agents: roles, locations, companies, templates |
+   | BASE RESUME | Your resume. Edit it any time; the agents always read the latest version |
+   | Tailored Resumes, Referral Outreach Drafts, Run Logs | Folders the agents fill |
 
-**The tracker sheet.** In the first tab, type these 16 headers into row 1, columns A to P, exactly as written:
+3. **Turn on the agents** (optional, but this is what finds jobs for you). They run in [Claude](https://claude.ai) as a scheduled task:
+   - In Claude, turn on the **Google Drive**, **Google Docs** and **Google Sheets** connectors.
+   - On the last setup screen (or later on **Files and runs**), click **Copy agent instructions**. They already contain your file IDs.
+   - In a new Claude chat, type *"Create a scheduled task that runs every day at 7:45 AM and 5:45 PM with these instructions:"* and paste.
 
-```
-Date Found | Company | Job Title | Location | Job Link | Source | Posted At | Match Score | Sponsorship Signal | H-1B History | Tailored Resume Link | Company Folder | Outreach Drafts Link | Status | Date Applied | Missing Keywords / Notes
-```
+   Without the agents, the dashboard still works: type jobs into the **Jobs** tab yourself.
 
-Tips:
-- **Dates** look like `2026-10-20`. Type a `'` first (`'2026-10-20`) so Sheets doesn't change the format.
-- **Match Score** is a number from 0 to 100.
-- **Links** must start with `https://`.
-- **Status** is one of: `Ready to apply`, `Applied`, `Referral requested`, `Interviewing`, `Offer`, `Rejected`, `Skipped`. Add a dropdown with these values (select column N → Data → Data validation). An empty status counts as Ready to apply.
-
-**The Outreach tab (optional).** Add a second tab named exactly `Outreach` with these 13 headers in row 1:
-
-```
-Date Drafted | Company | Job Title | Job Link | Person | Person Title | Relationship | Found Via | Profile URL | Message Type | Subject | Message | Draft ID
-```
-
-- Relationship is one of `Your connection`, `Recruiter`, `Hiring manager`, `Engineer`.
-- Message Type is one of `InMail`, `Connection note`, `Message`.
-
-Without this tab, the Agent drafts page is simply empty.
-
-### Step 3. Create a Google sign-in key (OAuth client ID)
-This lets the dashboard ask Google for permission to read your sheet. It's free.
-
-1. Go to https://console.cloud.google.com and create a project (any name, e.g. "Job Dashboard").
-2. **APIs & Services → Library**: turn on **Google Sheets API** and **Google Drive API**.
-3. **Google Auth Platform / OAuth consent screen**:
-   - Choose **External**. App name: "Job Dashboard". Use your email for the contact fields.
-   - Under **Audience → Test users**, add the Google account that owns your Drive folder.
-   - Leave the app in **Testing**. You'll see an "unverified app" warning when signing in. That's normal for a personal app; click **Continue**.
-4. **Credentials → Create credentials → OAuth client ID**:
-   - Application type: **Web application**.
-   - Authorized JavaScript origins: `https://<your-github-username>.github.io` (no path, no slash at the end).
-5. Copy the **Client ID** (it ends in `.apps.googleusercontent.com`).
-
-The client ID is not a password. Google only accepts it from the website address you entered above.
-
-### Step 4. Fill in `config.js`
-Open `config.js` in your fork (click the file, then the pencil icon) and change:
-
-| Setting | What to put |
-|---|---|
-| `GOOGLE_CLIENT_ID` | The Client ID from step 3 |
-| `YOUR_NAME` | Your first name, for the greeting |
-| `RUN_TIMES` | When your agents run (only shown as text) |
-| `GOOGLE_ACCOUNT_HINT` | The Google email that owns your Drive folder |
-| `TRACKER_SHEET_ID` | The long ID in the sheet's address: `docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit` |
-| `RUN_LOGS_FOLDER_ID` | The ID in the Run Logs folder's address: `drive.google.com/drive/folders/`**`THIS_PART`** |
-| `LINKS` | Full web addresses of your config doc, resume, the two output folders and the main folder |
-| `DAILY_LIMIT`, `INMAIL_DAILY_LIMIT` | Jobs per day and LinkedIn InMails per day (used for progress bars) |
-
-Click **Commit changes** to save.
-
-### Step 5. Make the LinkedIn messages sound like you (`outreach.js`)
-The message writer only uses facts you put in this file, so it never makes things up. Edit:
-- `ME`: your name, a one-line pitch, and (optional) a work-authorization line that's only used for recruiters. If you don't need one, set `sponsorship` and `shortSponsorship` to `''`.
-- `HIGHLIGHTS`: 4–8 true achievements from your resume, each with keywords. The writer picks the ones that best match the job.
-- `SCHOOLS`, `PAST_EMPLOYERS` and their labels: used by the "Alumni" and "Ex-colleagues" search buttons.
-
-### Step 6. Publish it with GitHub Pages
-In your fork: **Settings → Pages**. Under **Build and deployment** choose **Deploy from a branch**, branch **main**, folder **/ (root)**, then **Save**. After a minute your dashboard is at:
-
-`https://<your-github-username>.github.io/job-dashboard/`
-
-Open it and click **Sign in with Google**. Before you have any data, click **Preview with sample data** to see how it looks.
-
-### Step 7 (optional). Set up the agents
-The agents run in [Claude](https://claude.ai) as a **scheduled task** and need the Google Drive, Google Docs and Google Sheets connectors turned on.
-
-1. Open [`agent/agent-prompt.md`](agent/agent-prompt.md) and replace every `<...>` placeholder with your name and your Drive IDs (same IDs as step 4, plus your config doc, resume and folders).
-2. In Claude, ask it to create a scheduled task that runs twice a day with that prompt, or paste the prompt into a new scheduled task yourself.
-3. After the first run, refresh the dashboard: new jobs, resumes and drafts appear.
+**To change your details later,** edit the **Profile** tab of your tracker (Files and runs → **Edit my profile**). Search rules live in the SEARCH CONFIG doc.
 
 ---
 
@@ -132,11 +63,11 @@ The agents run in [Claude](https://claude.ai) as a **scheduled task** and need t
 | **All jobs** | Search and filter every job. Each row has Apply, Resume, Folder and People buttons. |
 | **LinkedIn outreach** | Write a message: enter the person, company and job, pick **InMail**, **Connection note** (300 characters max) or **Message**, then click **Draft messages**. Paste the job link (Greenhouse, Lever or Ashby) and the drafts mention skills from that job that are also in your resume. |
 | **Agent drafts** | Messages the agents prepared, grouped by job. Copy, open the person's profile, send it on LinkedIn, then click **Mark as sent**. |
-| **Files and runs** | Recent run logs and links to your Drive files. |
+| **Files and runs** | Recent runs, links to your Drive files, and **Copy agent instructions**. |
 
 **Light or dark?** Use the sun / screen / moon switch at the bottom of the sidebar (or top-right of the sign-in page). The screen icon follows your device setting.
 
-**To update a job's status,** change the Status column in the sheet. The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**.
+**To update a job's status,** change the Status column in the **Jobs** tab of your tracker. The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**.
 
 ### Finding people to ask for referrals
 Every job has **Find people** buttons that open LinkedIn's own search in your browser, filtered to people **currently at that company** and **in the US**:
@@ -158,20 +89,37 @@ It only reads the profile you're looking at, and only when you click it. It work
 
 ## Common questions
 
-**"Could not load data" after signing in.**
-You signed in with an account that can't open the tracker, or the IDs in `config.js` are wrong. Use the account that owns the Drive folder and check that it's a Test user (step 3).
+**Google says "This app isn't verified" or "Access blocked".**
+The person who hosts the site hasn't finished the one-time Google Cloud setup below (the app must be **In production** and ask only for the `drive.file` permission).
 
-**"Access blocked" or "redirect/origin mismatch" from Google.**
-The JavaScript origin in step 3 must be exactly `https://<your-github-username>.github.io`, with no path and no slash at the end.
+**I signed in and see the setup questions again.**
+You're signed in with a different Google account than the one you set up with, or the tracker was deleted. Each Google account gets its own workspace.
 
 **My changes don't show up.**
-GitHub Pages takes about a minute after a commit. Then hard-refresh (Cmd+Shift+R or Ctrl+Shift+R).
+The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**. After a code change, GitHub Pages takes about a minute; then hard-refresh (Cmd+Shift+R or Ctrl+Shift+R).
 
 **What's saved in my browser?**
 Only small conveniences: your light/dark choice, which drafts you marked sent, your sent-message log, and the job you picked last. Clearing site data resets them. Your sign-in lasts about an hour.
 
 **Is my data public?**
-No. The website code is public, but it holds no data. Only someone who signs in with an account that can open your sheet sees anything.
+No. The website code is public, but it holds no data. Your files are private in your own Drive.
+
+---
+
+## Hosting your own copy (only for the person who runs the site)
+
+Everyone else can skip this. You do it once, and then anyone can sign in.
+
+1. **Fork** this repo, then **Settings → Pages**: Deploy from a branch, **main**, **/ (root)**. Your site is `https://<your-github-username>.github.io/job-dashboard/`.
+2. In https://console.cloud.google.com create a project, then **APIs & Services → Library**: enable **Google Drive API** and **Google Sheets API**.
+3. **Google Auth Platform**:
+   - **Branding**: app name (e.g. "Job Agent"), support email, and your site address as the home page.
+   - **Audience**: user type **External**, then click **Publish app** so the status is **In production**. No test users needed.
+   - **Data access**: add only `https://www.googleapis.com/auth/drive.file`. Google treats it as non-sensitive, so the app doesn't need Google's review.
+   - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash).
+4. Put the client ID in `config.js` → `GOOGLE_CLIENT_ID` and commit.
+
+The client ID isn't a secret: Google only accepts it from the site address you listed.
 
 ---
 
@@ -180,8 +128,9 @@ No. The website code is public, but it holds no data. Only someone who signs in 
 |---|---|
 | `index.html` | The page layout and styles |
 | `app.js` | Sign-in, loading data, charts, and the pages |
-| `config.js` | **Your settings**: client ID, sheet and folder IDs, links, limits |
-| `outreach.js` | **Your message facts**: pitch, highlights, schools, past employers |
-| `agent/agent-prompt.md` | Prompt for the scheduled Claude agents (fill in the placeholders) |
-| `agent/search-config-template.md` | Starting point for your SEARCH CONFIG doc |
+| `setup.js` | The first-time setup wizard that creates your Drive workspace |
+| `config.js` | Site-wide settings: Google client ID and default limits |
+| `outreach.js` | How LinkedIn messages are written (your facts come from the Profile tab) |
+| `agent/agent-prompt.md` | Template for the agent instructions (the wizard fills it in for you) |
+| `agent/search-config-template.md` | What the SEARCH CONFIG doc covers |
 | `docs/demo.gif`, `docs/demo.mp4` | The demo shown at the top of this page |

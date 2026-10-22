@@ -1,13 +1,17 @@
 (() => {
   const C = window.JD_CONFIG;
-  const RT = C.RUN_TIMES || { morning: '7:43 AM', evening: '5:43 PM', zone: 'Pacific' };
-  const RUNS_TEXT = `${RT.morning} and ${RT.evening} ${RT.zone}`;
-  const fillRunTimes = () => {
-    const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
-    set('gate-runs', 'Runs at ' + RUNS_TEXT); set('side-am', RT.morning); set('side-pm', RT.evening);
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fillRunTimes); else fillRunTimes();
-  const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly';
+  // Per-user settings come from the Profile tab of the user's own tracker (see applyProfile).
+  const S = { name: '', morning: '7:45 AM', evening: '5:45 PM', tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles', dailyLimit: C.DAILY_LIMIT || 10, inmailLimit: C.INMAIL_DAILY_LIMIT || 5 };
+  const tzLabel = () => { try { return new Intl.DateTimeFormat('en-US', { timeZone: S.tz, timeZoneName: 'short' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName').value; } catch (e) { return ''; } };
+  let RUNS_TEXT = '';
+  function fillSettings() {
+    RUNS_TEXT = `${S.morning} and ${S.evening} ${tzLabel()}`.trim();
+    const set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+    set('gate-runs', 'Agents run twice a day, on your schedule'); set('side-am', S.morning); set('side-pm', S.evening);
+    set('k-limit', 'of ' + S.dailyLimit); set('side-limit', S.dailyLimit + ' jobs');
+  }
+  // drive.file: the app can only see files it created (your Job Agent workspace) — nothing else in your Drive.
+  const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   const $ = (id) => document.getElementById(id);
   const fmt = d3.format(',');
   const pct = d3.format('.0%');
@@ -20,10 +24,11 @@
   const PALETTE = ['--brand', '--s-referral', '--s-offer', '--s-ready', '--s-rejected', '--brand-2', '--s-interview', '--s-applied'];
 
   let token = null, tokenExpiry = 0, tokenClient = null, pendingResolve = null;
+  let PROFILE = null;
   let drafts = [], jobs = [], runs = [], lastLoaded = null, timer = null, usingSample = false, realData = null;
   let sortKey = 'Match Score', sortDir = -1, statusFilter = '';
 
-  const todayPT = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+  const todayPT = () => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: S.tz }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } };
   const statusOf = (r) => String(r['Status'] || '').trim() || 'Ready to apply';
   const safeUrl = (u) => (/^https:\/\//i.test(String(u || '').trim()) ? String(u).trim() : null);
   const scoreColor = (s) => (s >= 85 ? 'var(--s-offer)' : s >= 75 ? 'var(--brand)' : 'var(--s-ready)');
@@ -32,9 +37,18 @@
   const hash = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); };
   const fmtDay = (s) => { const d = new Date(String(s).slice(0, 10) + 'T12:00:00Z'); return isNaN(d) ? String(s) : d3.utcFormat('%b %-d')(d); };
 
-  document.querySelectorAll('[data-link]').forEach((a) => { a.href = C.LINKS[a.dataset.link]; });
-  $('k-limit').textContent = 'of ' + C.DAILY_LIMIT;
-  $('side-limit').textContent = C.DAILY_LIMIT + ' jobs';
+  // ---------- Workspace (the folder, sheet and docs the setup wizard created) ----------
+  let WS = null;
+  const U = {
+    sheet: (id) => `https://docs.google.com/spreadsheets/d/${id}/edit`,
+    doc: (id) => `https://docs.google.com/document/d/${id}/edit`,
+    folder: (id) => `https://drive.google.com/drive/folders/${id}`,
+  };
+  function applyLinks() {
+    const L = WS ? { tracker: U.sheet(WS.tracker), config: U.doc(WS.config), resume: U.doc(WS.resume), resumes: U.folder(WS.resumes), outreach: U.folder(WS.outreach), runs: U.folder(WS.runlogs), folder: U.folder(WS.folder), profile: U.sheet(WS.tracker) + '#gid=' + (WS.profileGid || '2003') } : {};
+    document.querySelectorAll('[data-link]').forEach((a) => { if (L[a.dataset.link]) { a.href = L[a.dataset.link]; a.removeAttribute('aria-disabled'); } else { a.removeAttribute('href'); a.setAttribute('aria-disabled', 'true'); } });
+  }
+  fillSettings();
 
   // ---------- Screens ----------
   function showGate(mode, error) {
@@ -46,6 +60,7 @@
   function showApp() {
     $('gate').hidden = true; $('app').hidden = false;
     route();
+    document.querySelectorAll('.su-times').forEach((x) => { x.textContent = `${S.morning} and ${S.evening}`; });
   }
   function clearToken() { token = null; tokenExpiry = 0; try { sessionStorage.removeItem('jd_tok'); } catch (e) {} }
   function showGateError(msg) { if ($('app').hidden) showGate('signin', msg); else $('app-err').textContent = msg; }
@@ -58,7 +73,6 @@
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: C.GOOGLE_CLIENT_ID,
       scope: SCOPES,
-      hint: C.GOOGLE_ACCOUNT_HINT,
       callback: (resp) => {
         if (resp.error) { showGateError('Sign-in failed: ' + resp.error); return; }
         token = resp.access_token;
@@ -77,41 +91,88 @@
   $('signin').addEventListener('click', () => { if (tokenClient) { $('gate-err').textContent = ''; tokenClient.requestAccessToken({ prompt: '' }); } });
   $('signout').addEventListener('click', () => {
     if (token) google.accounts.oauth2.revoke(token, () => {});
-    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; drafts = []; usingSample = false; realData = null;
+    clearToken(); clearInterval(timer); lastLoaded = null; jobs = []; runs = []; drafts = []; usingSample = false; realData = null; WS = null;
+    $('setup').hidden = true;
     showGate('signin');
+  });
+  // Look around with sample data before signing in.
+  $('demo').addEventListener('click', () => { WS = null; applyLinks(); showApp(); setSample(true); });
+  // Files and runs page: copy the agent instructions filled with this user's IDs.
+  $('agent-copy').addEventListener('click', () => {
+    if (!WS) { $('agent-copy').lastChild.textContent = 'Sign in first to get your instructions'; return; }
+    window.JD_SETUP.copyPrompt($('agent-copy'), WS, { fullName: (PROFILE && PROFILE.fullName) || S.name, firstName: S.name, tz: S.tz });
   });
   function ensureToken() {
     if (token && Date.now() < tokenExpiry) return Promise.resolve();
     return new Promise((resolve) => { pendingResolve = resolve; tokenClient.requestAccessToken({ prompt: '' }); });
   }
-  async function api(url) {
+  // opts: { method, json, body, headers }
+  async function api(url, opts = {}, retried) {
     await ensureToken();
-    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-    if (r.status === 401) { token = null; await ensureToken(); return api(url); }
+    const headers = Object.assign({ Authorization: 'Bearer ' + token }, opts.headers || {});
+    let body = opts.body;
+    if (opts.json !== undefined) { body = JSON.stringify(opts.json); headers['Content-Type'] = 'application/json'; }
+    const r = await fetch(url, { method: opts.method || (body ? 'POST' : 'GET'), headers, body });
+    if (r.status === 401 && !retried) { token = null; await ensureToken(); return api(url, opts, true); }
     if (!r.ok) { const t = await r.text(); throw new Error(`${r.status}: ${t.slice(0, 200)}`); }
-    return r.json();
+    const t = await r.text();
+    return t ? JSON.parse(t) : {};
+  }
+  const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets/';
+  const DRIVE = 'https://www.googleapis.com/drive/v3/files';
+
+  // The tracker carries the IDs of the whole workspace in its appProperties (private to this app).
+  async function findWorkspace() {
+    const res = await api(DRIVE + '?' + new URLSearchParams({
+      q: "appProperties has { key='jobAgentRole' and value='tracker' } and trashed = false",
+      orderBy: 'createdTime desc', pageSize: '5', fields: 'files(id,appProperties)',
+    }));
+    const f = (res.files || [])[0];
+    if (!f) return null;
+    const a = f.appProperties || {};
+    return { tracker: f.id, folder: a.folder, config: a.config, resume: a.resume, resumes: a.resumes, outreach: a.outreach, runlogs: a.runlogs, profileGid: a.profileGid };
+  }
+  function applyProfile(rows) {
+    const get = (k) => rows.find((r) => String(r[0] || '').trim().toLowerCase() === k);
+    const v = (k, i = 1) => String((get(k) || [])[i] || '').trim();
+    const p = {
+      firstName: v('first name'), fullName: v('full name'), pitch: v('pitch'), shortPitch: v('pitch', 2),
+      sponsorship: v('work authorization'), shortSponsorship: v('work authorization', 2),
+      schools: v('schools'), pastEmployers: v('past employers'), skills: v('skills'),
+      highlights: rows.filter((r) => String(r[0] || '').trim().toLowerCase() === 'highlight').map((r) => ({ long: String(r[1] || '').trim(), short: String(r[2] || '').trim(), area: String(r[3] || '').trim(), keywords: String(r[4] || '') })),
+    };
+    window.JD_OUTREACH.setProfile(p);
+    S.name = p.firstName;
+    if (v('morning run')) S.morning = v('morning run');
+    if (v('evening run')) S.evening = v('evening run');
+    if (v('time zone')) S.tz = v('time zone');
+    if (+v('daily job limit') > 0) S.dailyLimit = +v('daily job limit');
+    if (+v('inmails per day') > 0) S.inmailLimit = +v('inmails per day');
+    fillSettings();
+    return p;
   }
 
   // ---------- Data ----------
   async function load() {
+    if (!WS) return new Error('not signed in');
     $('app-err').textContent = '';
     setUpdated('Refreshing…');
     try {
-      const [sheet, drive, outreach] = await Promise.all([
-        api(`https://sheets.googleapis.com/v4/spreadsheets/${C.TRACKER_SHEET_ID}/values/${encodeURIComponent(C.TRACKER_RANGE)}`),
-        api('https://www.googleapis.com/drive/v3/files?' + new URLSearchParams({
-          q: `'${C.RUN_LOGS_FOLDER_ID}' in parents and mimeType = 'application/vnd.google-apps.document' and name contains 'Run ' and trashed = false`,
-          orderBy: 'createdTime desc', pageSize: '8', fields: 'files(name,createdTime,webViewLink)',
-        })),
-        // The Outreach tab may not exist on an older tracker; treat that as no drafts.
-        api(`https://sheets.googleapis.com/v4/spreadsheets/${C.TRACKER_SHEET_ID}/values/${encodeURIComponent(C.OUTREACH_RANGE || "'Outreach'!A1:M2000")}`).catch(() => ({ values: [] })),
+      const tab = (range) => api(SHEETS + WS.tracker + '/values/' + encodeURIComponent(range));
+      const [sheet, runTab, outreach, profile] = await Promise.all([
+        tab("'Jobs'!A1:P1000"),
+        tab("'Runs'!A1:G500").catch(() => ({ values: [] })),
+        tab("'Outreach'!A1:M2000").catch(() => ({ values: [] })),
+        tab("'Profile'!A1:E80").catch(() => ({ values: [] })),
       ]);
+      PROFILE = applyProfile((profile.values || []).slice(1));
       const toRows = (vals) => { const h = vals[0] || []; return vals.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(h.map((c, i) => [c, r[i] ?? '']))); };
       const draftRows = toRows(outreach.values || []);
       const values = sheet.values || [];
       const cols = values[0] || [];
       const rows = values.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])));
-      realData = { jobs: rows, drafts: draftRows, runs: (drive.files || []).map((f) => ({ title: f.name, created: f.createdTime, link: f.webViewLink })) };
+      const runRows = toRows(runTab.values || []).reverse().slice(0, 8);
+      realData = { jobs: rows, drafts: draftRows, runs: runRows.map((x) => ({ title: 'Run ' + String(x['Run Time'] || '').replace(/^'/, ''), created: '', link: safeUrl(x['Log Link']) || '', found: x['Found'], prepared: x['Prepared'], notes: x['Notes'] })) };
       if (!usingSample || rows.length) { usingSample = false; jobs = realData.jobs; runs = realData.runs; drafts = realData.drafts; }
       lastLoaded = new Date();
       if (!$('app').hidden) render();
@@ -132,10 +193,19 @@
 
   async function start() {
     showGate('loading');
+    try { WS = await findWorkspace(); }
+    catch (e) { clearToken(); showGate('signin', 'Could not reach your Google Drive (' + e.message.slice(0, 120) + '). Try signing in again.'); return; }
+    if (!WS) {
+      // First visit with this Google account: build the workspace.
+      $('gate').hidden = true; $('app').hidden = true;
+      window.JD_SETUP.open({ api, tz: S.tz, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
+      return;
+    }
+    applyLinks();
     const ok = await load();
     if (ok !== true) {
       clearToken();
-      showGate('signin', 'Could not load your tracker (' + ok.message.slice(0, 120) + '). Sign in with the Google account that owns the tracker, and check that the Sheets and Drive APIs are enabled.');
+      showGate('signin', 'Could not load your tracker (' + ok.message.slice(0, 120) + '). Try signing in again.');
       return;
     }
     showApp();
@@ -177,11 +247,12 @@
   }
   function setSample(on) {
     usingSample = on;
+    $('sample-off').textContent = WS ? 'Show my data' : 'Sign in to get started';
     const d = on ? sampleData() : (realData || { jobs: [], runs: [], drafts: [] });
     jobs = d.jobs; runs = d.runs; drafts = d.drafts || []; statusFilter = ''; $('q').value = '';
     render();
   }
-  $('sample-off').addEventListener('click', () => setSample(false));
+  $('sample-off').addEventListener('click', () => { if (!WS) { $('app').hidden = true; showGate('signin'); return; } setSample(false); });
 
   // ---------- Derived numbers ----------
   function count(rows, key, fallback) {
@@ -475,7 +546,7 @@
     for (const r of runs) {
       const row = el('div', 'run');
       const ic = el('span', 'kpi-icon'); ic.style.setProperty('--k', 'var(--brand-2)'); ic.append(icon('file', 'ic'));
-      const txt = el('div'); txt.append(el('b', null, r.title), el('small', null, r.created ? new Date(r.created).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Run log'));
+      const txt = el('div'); txt.append(el('b', null, r.title), el('small', null, r.prepared !== undefined && r.prepared !== '' ? `${r.prepared} prepared${r.found ? ' of ' + r.found + ' found' : ''}${r.notes ? ' · ' + r.notes : ''}` : 'Run log'));
       row.append(ic, txt, btn('Open', r.link, 'external'));
       box.append(row);
     }
@@ -489,16 +560,16 @@
     const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
     const ready = D.g('Ready to apply');
     const P = PAGES[page];
-    $('greet').textContent = P.title || (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (C.YOUR_NAME ? ', ' + C.YOUR_NAME : '');
+    $('greet').textContent = P.title || (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (S.name ? ', ' + S.name : '');
     $('take').textContent = P.sub || (page === 'jobs'
       ? (jobs.length ? `${fmt(jobs.length)} jobs prepared · ${fmt(ready)} ready to apply` : 'Every job the agents prepare shows up here')
       : jobs.length === 0
         ? 'No jobs yet. The agents fill this in after their next run.'
-        : `${fmt(ready)} ${ready === 1 ? 'job is' : 'jobs are'} ready to apply, and ${fmt(today)} of ${C.DAILY_LIMIT} were prepared today.`);
+        : `${fmt(ready)} ${ready === 1 ? 'job is' : 'jobs are'} ready to apply, and ${fmt(today)} of ${S.dailyLimit} were prepared today.`);
     const nb = $('nav-ready'); nb.hidden = !ready; nb.textContent = fmt(ready); nb.title = ready + ' ready to apply';
 
     $('k-today').textContent = fmt(today);
-    $('k-meter').style.width = Math.min(100, (today / C.DAILY_LIMIT) * 100) + '%';
+    $('k-meter').style.width = Math.min(100, (today / S.dailyLimit) * 100) + '%';
     $('k-ready').textContent = fmt(ready);
     $('k-applied').textContent = fmt(D.funnel[1].value);
     $('k-int').textContent = fmt(D.funnel[2].value);
@@ -516,7 +587,7 @@
     const p = D.funnel[0].value, a = D.funnel[1].value, i = D.funnel[2].value;
     [[p ? pct(a / p) : '—', 'apply rate'], [a ? pct(i / a) : '—', 'interview rate'], [i ? pct(D.funnel[3].value / i) : '—', 'offer rate']].forEach(([v, l]) => { const d = el('div'); d.append(el('b', null, v), el('span', null, l)); conv.append(d); });
 
-    barChart($('daily'), D.byDay.slice(-14).map((d) => ({ key: d.date, value: d.value })), { unit: 'prepared', ref: C.DAILY_LIMIT, xFmt: fmtDay, c1: cssVar('--brand'), c2: cssVar('--s-referral'), empty: 'No jobs prepared yet.' });
+    barChart($('daily'), D.byDay.slice(-14).map((d) => ({ key: d.date, value: d.value })), { unit: 'prepared', ref: S.dailyLimit, xFmt: fmtDay, c1: cssVar('--brand'), c2: cssVar('--s-referral'), empty: 'No jobs prepared yet.' });
     areaChart($('cumul'), D.cumul, { color: cssVar('--s-applied'), empty: 'Set Status and Date Applied in the tracker to see this grow.' });
 
     const bins = [['<70', 0, 70], ['70s', 70, 80], ['80s', 80, 90], ['90+', 90, 101]].map(([key, lo, hi]) => ({ key, value: jobs.filter((r) => { const s = Number(r['Match Score']); return !isNaN(s) && s >= lo && s < hi; }).length }));
@@ -536,7 +607,7 @@
   }
 
   // ---------- LinkedIn outreach ----------
-  const LI_LIMIT = C.INMAIL_DAILY_LIMIT || 5;
+
   const LOG_KEY = 'jd_li_log';
   const readLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch (e) { return []; } };
   const writeLog = (log) => { try { localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 200))); } catch (e) {} };
@@ -577,9 +648,9 @@
   function renderOutreachStatus() {
     const n = inmailsToday();
     $('li-count').textContent = fmt(n);
-    $('li-count-of').textContent = `of ${LI_LIMIT} sent`;
-    $('li-meter').style.width = Math.min(100, (n / LI_LIMIT) * 100) + '%';
-    $('li-warn').hidden = !(n >= LI_LIMIT && form.elements.type.value === 'inmail');
+    $('li-count-of').textContent = `of ${S.inmailLimit} sent`;
+    $('li-meter').style.width = Math.min(100, (n / S.inmailLimit) * 100) + '%';
+    $('li-warn').hidden = !(n >= S.inmailLimit && form.elements.type.value === 'inmail');
     const box = $('li-log'); const log = readLog();
     $('li-clear').hidden = !log.length;
     if (!log.length) return emptyBox(box, 'Nothing sent yet. Mark a draft as sent and it shows up here.', 'message');
@@ -735,8 +806,8 @@
     if (counts['Engineer']) mk('Engineers', 'Engineer', REL['Engineer'].color);
     $('ad-hide-sent').checked = hideSent;
     const used = inmailsToday();
-    $('ad-inmail-text').textContent = `${fmt(used)} of ${LI_LIMIT} InMails sent today`;
-    $('ad-inmail').classList.toggle('full', used >= LI_LIMIT);
+    $('ad-inmail-text').textContent = `${fmt(used)} of ${S.inmailLimit} InMails sent today`;
+    $('ad-inmail').classList.toggle('full', used >= S.inmailLimit);
 
     const list = drafts.filter((d) => (!relFilter || relOf(d) === relFilter) && (!hideSent || !sent[draftId(d)]));
     if (!drafts.length) return emptyBox(box, 'No agent drafts yet. After each run, the people the agents found for every job show up here, with your 1st-degree connections first.', 'users', usingSample || jobs.length ? null : sampleButton());
@@ -795,14 +866,14 @@
     acts.append(open);
     if (!isSent) mk('Mark as sent', 'check', () => {
       if (type === 'note' && ta.value.length > L.note) { count.classList.add('over'); alert(`This note is over ${L.note} characters. Shorten it before sending.`); return; }
-      if (type === 'inmail' && inmailsToday() >= LI_LIMIT && !confirm(`You've already sent ${LI_LIMIT} InMails today. Mark this one as sent anyway?`)) return;
+      if (type === 'inmail' && inmailsToday() >= S.inmailLimit && !confirm(`You've already sent ${S.inmailLimit} InMails today. Mark this one as sent anyway?`)) return;
       const m = readSent(); m[id] = todayPT(); writeSent(m);
       const log = readLog(); log.unshift({ day: todayPT(), at: Date.now(), type, name: d['Person'], company: d['Company'], role: d['Job Title'], recipient: rel, profile: prof || '', source: 'agent' });
       writeLog(log); renderOutreachStatus(); renderAgentDrafts();
     });
     else mk('Undo sent', 'refresh', () => { const m = readSent(); delete m[id]; writeSent(m); renderAgentDrafts(); });
     const foot = el('div', 'ad-foot'); foot.append(acts, count); card.append(foot);
-    if (type === 'inmail' && !isSent && inmailsToday() >= LI_LIMIT) card.append(el('div', 'ad-warn', `Today's ${LI_LIMIT} InMails are used. Send this tomorrow, or write them a connection note on the LinkedIn outreach page.`));
+    if (type === 'inmail' && !isSent && inmailsToday() >= S.inmailLimit) card.append(el('div', 'ad-warn', `Today's ${S.inmailLimit} InMails are used. Send this tomorrow, or write them a connection note on the LinkedIn outreach page.`));
     return card;
   }
   $('ad-hide-sent').addEventListener('change', (e) => { hideSent = e.target.checked; renderAgentDrafts(); });
@@ -814,7 +885,7 @@
       form.elements.company.value = r['Company'] || '';
       form.elements.role.value = r['Job Title'] || '';
       form.elements.link.value = safeUrl(r['Job Link']) || '';
-      if (inmailsToday() >= LI_LIMIT) form.querySelector('input[value="note"]').checked = true;
+      if (inmailsToday() >= S.inmailLimit) form.querySelector('input[value="note"]').checked = true;
       syncFormMode();
       go('linkedin');
       setTimeout(() => form.elements.name.focus(), 50);
@@ -844,7 +915,7 @@
       if (job) { form.elements.company.value = job.company; form.elements.role.value = job.role; form.elements.link.value = job.link; }
       const rec = degree === '1' ? 'connection' : guessRecipient(headline);
       form.elements.recipient.value = rec;
-      const type = degree === '1' ? 'message' : inmailsToday() >= LI_LIMIT ? 'note' : 'inmail';
+      const type = degree === '1' ? 'message' : inmailsToday() >= S.inmailLimit ? 'note' : 'inmail';
       form.querySelector(`input[name="type"][value="${type}"]`).checked = true;
       syncFormMode();
       const box = $('li-prefill'); box.hidden = false; box.replaceChildren();

@@ -245,7 +245,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 4%, transparent)
 .fld input:focus, .fld select:focus, .fld textarea:focus, .draft textarea:focus, .draft input:focus { outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 0; border-color: var(--brand); background: var(--panel); }
 .fld input[aria-invalid="true"] { border-color: var(--bad); }
 .seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--grid); width: max-content; }
-.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg { position: relative; }
+.seg input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .seg span { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--muted); cursor: pointer; }
 .seg input:checked + span { background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
 .seg input:focus-visible + span { outline: 2px solid var(--brand); }
@@ -324,6 +325,70 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
 .tip .d { color: var(--muted); }
 .tip b { color: var(--ink); }
 
+
+/* ---------- Setup wizard ---------- */
+.linkbtn { all: unset; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--brand); padding: 6px 0; }
+.linkbtn:hover { text-decoration: underline; }
+.setup { min-height: 100vh; display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); }
+.setup-art { background: var(--side-grad); color: #fff; padding: 40px 34px; display: flex; flex-direction: column; justify-content: space-between; gap: 28px; position: sticky; top: 0; height: 100vh; }
+.setup-art h2 { font-size: 30px; line-height: 1.15; letter-spacing: -.02em; font-weight: 800; margin: 0 0 10px; }
+.setup-art p { color: var(--side-text); margin: 0; }
+.steps { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 6px; }
+.steps li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; color: var(--side-muted); font-weight: 700; }
+.steps li span { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 1.5px solid rgba(255,255,255,.3); }
+.steps li.on { background: var(--side-2); color: #fff; }
+.steps li.on span { background: #fff; color: #3b2a8f; border-color: #fff; }
+.steps li.done { color: var(--side-text); }
+.steps li.done span { background: color-mix(in srgb, var(--s-offer) 80%, transparent); border-color: transparent; color: #fff; }
+.setup-fine { display: flex; gap: 8px; font-size: 12px; color: var(--side-muted); }
+.setup-main { padding: 40px 24px; display: grid; justify-items: center; align-content: start; }
+.setup-card { width: 100%; max-width: 640px; background: var(--panel-glass); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 20px; padding: 32px; box-shadow: var(--shadow); display: grid; gap: 18px; }
+.setup-card section, #su-review, #su-progress, #su-done { display: grid; gap: 14px; align-content: start; }
+#su-review[hidden], #su-progress[hidden], #su-done[hidden] { display: none; }
+.setup-card h1 { font-size: 26px; letter-spacing: -.02em; font-weight: 800; color: var(--ink); margin: 0; }
+.eyebrow { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand); }
+.lead { margin: -6px 0 4px; color: var(--muted); }
+fieldset.fld { border: 0; padding: 0; margin: 0; }
+fieldset.fld legend { padding: 0; margin-bottom: 6px; }
+.seg label { display: contents; }
+.f3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.drop { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 30px 16px; border: 2px dashed color-mix(in srgb, var(--brand) 35%, var(--line)); border-radius: 16px; cursor: pointer; background: color-mix(in srgb, var(--brand) 5%, transparent); }
+.drop:hover, .drop.has { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 9%, transparent); }
+.drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.drop .ic { width: 28px; height: 28px; color: var(--brand); }
+.drop b { color: var(--ink); }
+.drop small { color: var(--muted); }
+.su-paste summary { cursor: pointer; font-weight: 700; color: var(--brand); font-size: 13px; }
+.su-paste[open] summary { margin-bottom: 10px; }
+.hl { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--s-referral) 5%, var(--panel)); }
+.hl-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; color: var(--muted); }
+#su-highlights { display: grid; gap: 12px; }
+#su-add-hl { justify-self: start; }
+.setup-nav { display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
+.setup-nav .grow { flex: 1; }
+.su-tree, .su-tree ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.su-tree ul { padding: 8px 0 0 26px; }
+.su-tree li { display: block; }
+.su-tree .ic { vertical-align: -3px; margin-right: 6px; color: var(--brand); }
+.su-tree small { color: var(--muted); margin-left: 6px; }
+.su-prog { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.su-prog li { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--muted); }
+.su-prog li .spinner { width: 16px; height: 16px; border-width: 2px; margin: 0; }
+.su-prog li.ok { color: var(--ink); }
+.su-prog li.ok .ic { color: var(--s-offer); }
+.su-prog li.fail { color: var(--bad); }
+.su-ok { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--s-offer) 16%, transparent); color: var(--s-offer); }
+.su-ok .ic { width: 28px; height: 28px; stroke-width: 3; }
+.su-agent { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.su-agent a { color: var(--brand); font-weight: 700; }
+.su-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.agent-card { margin-top: 0; gap: 12px; }
+@media (max-width: 900px) {
+  .setup { grid-template-columns: 1fr; }
+  .setup-art { position: static; height: auto; padding: 24px; } .setup-art .steps { display: none; }
+  .setup-main { padding: 16px; } .setup-card { padding: 22px 18px; } .f3 { grid-template-columns: 1fr 1fr; }
+}
+
 /* Responsive */
 @media (max-width: 1200px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .row.c { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row.b { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) {
@@ -354,6 +419,8 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
   <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
   <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></symbol>
@@ -411,24 +478,157 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
     <div class="gate-card">
       <div id="gate-signin">
         <h1>Sign in to your dashboard</h1>
-        <p>Use the Google account that owns your job tracker.</p>
+        <p>New here? Sign in with any Google account and we'll set up your job tracker in your Google Drive. It takes about 3 minutes.</p>
         <button class="gbtn" id="signin" type="button">
           <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
           Sign in with Google
         </button>
+        <button class="linkbtn" id="demo" type="button"><svg class="ic sm"><use href="#i-eye"/></svg>Or look around with sample data first</button>
       </div>
       <div id="gate-loading" hidden>
         <div class="spinner"></div>
         <h1>Loading your dashboard</h1>
-        <p>Reading your tracker and run logs from Google Drive.</p>
+        <p>Opening your job tracker in Google Drive.</p>
       </div>
       <div class="err" id="gate-err"></div>
-      <div class="fine"><svg class="ic sm"><use href="#i-lock"/></svg><span>Read-only access. Your data goes straight from Google to this browser and is never stored on GitHub.</span></div>
+      <div class="fine"><svg class="ic sm"><use href="#i-lock"/></svg><span>The app can only open the files it creates for you in your Drive, nothing else. Your data goes straight from Google to this browser and is never stored anywhere else.</span></div>
     </div>
   </div>
 </div>
 
 <!-- ============ Dashboard ============ -->
+<div class="setup" id="setup" hidden>
+  <aside class="setup-art">
+    <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
+    <div>
+      <h2>Let's set up your job search.</h2>
+      <p>Answer a few questions. We'll create a folder in your Google Drive with your tracker, your resume and your search settings. You can change any answer later.</p>
+      <ol class="steps" id="su-steps">
+        <li data-step="1"><span>1</span>About you</li>
+        <li data-step="2"><span>2</span>What you're looking for</li>
+        <li data-step="3"><span>3</span>Your resume</li>
+        <li data-step="4"><span>4</span>Highlights for messages</li>
+        <li data-step="5"><span>5</span>Create and connect agents</li>
+      </ol>
+    </div>
+    <div class="setup-fine"><svg class="ic sm"><use href="#i-lock"/></svg><span>Everything is saved only in your Google Drive. The app can't see any of your other files.</span></div>
+  </aside>
+  <main class="setup-main">
+    <form class="setup-card" id="su-form" novalidate>
+      <section data-step="1">
+        <p class="eyebrow">Step 1 of 5</p>
+        <h1>About you</h1>
+        <p class="lead">Used in your messages to recruiters and in the greeting.</p>
+        <div class="f2">
+          <label class="fld"><span>First name</span><input name="firstName" required autocomplete="given-name" placeholder="e.g. Alex"></label>
+          <label class="fld"><span>Full name <em>as on your resume</em></span><input name="fullName" required autocomplete="name" placeholder="e.g. Alex Morgan"></label>
+        </div>
+        <label class="fld"><span>Describe yourself in one line <em>finishes the sentence "I'm …"</em></span><input name="pitch" required placeholder="e.g. a senior backend engineer with 8 years in fintech (Stripe, Square)"></label>
+        <label class="fld"><span>Shorter version for connection notes <em>finishes "I'm a …"</em></span><input name="shortPitch" placeholder="e.g. fintech backend engineer (Stripe, Square)"></label>
+        <fieldset class="fld"><legend>Will you need visa sponsorship?</legend>
+          <div class="seg">
+            <label><input type="radio" name="needSponsorship" value="no" checked><span>No</span></label>
+            <label><input type="radio" name="needSponsorship" value="yes"><span>Yes</span></label>
+          </div>
+        </fieldset>
+        <div class="su-spons" hidden>
+          <label class="fld"><span>Work-authorization line for recruiters <em>sent only to recruiters</em></span><textarea name="sponsorship" rows="2" placeholder="e.g. I'm on an H-1B visa and would need a transfer."></textarea></label>
+          <label class="fld"><span>Short version for connection notes <em>optional</em></span><input name="shortSponsorship" placeholder="e.g. I'd need an H-1B transfer."></label>
+        </div>
+      </section>
+
+      <section data-step="2" hidden>
+        <p class="eyebrow">Step 2 of 5</p>
+        <h1>What you're looking for</h1>
+        <p class="lead">The agents use these to search. You can fine-tune everything later in your Search config doc.</p>
+        <label class="fld"><span>Job titles <em>comma-separated</em></span><input name="roles" required value="Senior Software Engineer, Staff Software Engineer"></label>
+        <label class="fld"><span>Locations <em>comma-separated</em></span><input name="locations" required value="Remote (US)"></label>
+        <label class="fld"><span>Companies to watch <em>optional, comma-separated</em></span><input name="watchlist" placeholder="e.g. Stripe, Airbnb, Databricks"></label>
+        <label class="fld"><span>Companies to skip <em>optional, e.g. your current employer</em></span><input name="skip" placeholder="e.g. Acme Corp"></label>
+        <div class="f3">
+          <label class="fld"><span>Jobs per day</span><input name="dailyLimit" type="number" min="1" max="50" value="10"></label>
+          <label class="fld"><span>Morning run</span><input name="morning" value="7:45 AM"></label>
+          <label class="fld"><span>Evening run</span><input name="evening" value="5:45 PM"></label>
+        </div>
+        <p class="hint" id="su-tz"></p>
+      </section>
+
+      <section data-step="3" hidden>
+        <p class="eyebrow">Step 3 of 5</p>
+        <h1>Your resume</h1>
+        <p class="lead">This becomes your base resume. The agents make a tailored copy for every job and never invent anything that isn't in it.</p>
+        <label class="drop" id="su-drop">
+          <input type="file" name="resumeFile" accept=".docx,.pdf,.txt,.doc,.rtf,.odt">
+          <svg class="ic"><use href="#i-file"/></svg>
+          <b id="su-file-name">Choose your resume file</b>
+          <small>Word (.docx) works best. PDF and text also work.</small>
+        </label>
+        <details class="su-paste"><summary>Or paste it as text</summary>
+          <label class="fld"><span>Resume text</span><textarea name="resumeText" rows="10" placeholder="Paste your whole resume here"></textarea></label>
+        </details>
+      </section>
+
+      <section data-step="4" hidden>
+        <p class="eyebrow">Step 4 of 5 · optional</p>
+        <h1>Highlights for your messages</h1>
+        <p class="lead">Drafted messages only mention what you list here, so they never make anything up. You can skip this and fill it in later in the Profile tab of your tracker.</p>
+        <label class="fld"><span>Skills from your resume <em>comma-separated</em></span><input name="skills" placeholder="e.g. Java, Kafka, React, AWS, payments"></label>
+        <div class="f2">
+          <label class="fld"><span>Schools <em>for alumni searches</em></span><input name="schools" placeholder="e.g. University of Michigan"></label>
+          <label class="fld"><span>Past employers <em>not your current one</em></span><input name="pastEmployers" placeholder="e.g. Square, Oracle"></label>
+        </div>
+        <div id="su-highlights"></div>
+        <button class="btn sm" type="button" id="su-add-hl"><svg class="ic sm"><use href="#i-pen"/></svg>Add another highlight</button>
+      </section>
+
+      <section data-step="5" hidden>
+        <div id="su-review">
+          <p class="eyebrow">Step 5 of 5</p>
+          <h1>Create your workspace</h1>
+          <p class="lead">We'll create this in your Google Drive:</p>
+          <ul class="su-tree">
+            <li><svg class="ic sm"><use href="#i-folder"/></svg><b>Job Agent</b> folder
+              <ul>
+                <li><svg class="ic sm"><use href="#i-sheet"/></svg>Job Application Tracker <small>jobs, outreach drafts, runs and your profile</small></li>
+                <li><svg class="ic sm"><use href="#i-settings"/></svg>SEARCH CONFIG <small>your answers from step 2</small></li>
+                <li><svg class="ic sm"><use href="#i-file"/></svg>BASE RESUME</li>
+                <li><svg class="ic sm"><use href="#i-folder"/></svg>Tailored Resumes, Referral Outreach Drafts, Run Logs</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <div id="su-progress" hidden>
+          <h1>Setting things up…</h1>
+          <ul class="su-prog" id="su-prog"></ul>
+        </div>
+        <div id="su-done" hidden>
+          <div class="su-ok"><svg class="ic"><use href="#i-check"/></svg></div>
+          <h1>Your workspace is ready</h1>
+          <p class="lead">One last step turns on the agents that find jobs and tailor your resume twice a day. They run in Claude as a scheduled task, so you need a Claude account whose plan includes scheduled tasks.</p>
+          <ol class="su-agent">
+            <li>Open <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> and turn on the <b>Google Drive</b>, <b>Google Docs</b> and <b>Google Sheets</b> connectors (Settings → Connectors).</li>
+            <li>Click <b>Copy agent instructions</b> below.</li>
+            <li>In a new Claude chat, paste them after this line: <em>"Create a scheduled task that runs every day at <span class="su-times"></span> with these instructions:"</em></li>
+          </ol>
+          <div class="su-actions">
+            <button class="btn primary" type="button" id="su-copy"><svg class="ic sm"><use href="#i-copy"/></svg>Copy agent instructions</button>
+            <button class="btn" type="button" id="su-open"><svg class="ic sm"><use href="#i-grid"/></svg>Open my dashboard</button>
+          </div>
+          <p class="hint">You can copy the instructions again anytime from the <b>Files and runs</b> page.</p>
+        </div>
+      </section>
+
+      <div class="form-err" id="su-err" role="alert"></div>
+      <div class="setup-nav" id="su-nav">
+        <button class="btn" type="button" id="su-back"><svg class="ic sm"><use href="#i-arrow-left"/></svg>Back</button>
+        <span class="grow"></span>
+        <button class="btn" type="button" id="su-skip" hidden>Skip for now</button>
+        <button class="btn primary" type="submit" id="su-next">Continue<svg class="ic sm"><use href="#i-arrow-right"/></svg></button>
+      </div>
+    </form>
+  </main>
+</div>
+
 <div class="shell" id="app" hidden>
   <aside class="side">
     <div class="brand"><span class="brand-mark"><svg class="ic sm"><use href="#i-briefcase"/></svg></span>Job Agent</div>
@@ -718,11 +918,21 @@ a.ad-job:hover { color: var(--brand); text-decoration: underline; }
         </div>
       </div>
     </section>
+    <section class="w agent-card">
+      <div class="w-head"><div class="w-title"><span class="kpi-icon" style="--k: var(--accent)"><svg class="ic"><use href="#i-zap"/></svg></span><div><h2>Agent instructions</h2><p class="hint">Paste these into a scheduled task in Claude to run your agents. They already include your Drive file IDs.</p></div></div></div>
+      <ol class="su-agent">
+        <li>In <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a>, turn on the <b>Google Drive</b>, <b>Google Docs</b> and <b>Google Sheets</b> connectors.</li>
+        <li>Start a new chat and type: <em>"Create a scheduled task that runs every day at <span class="su-times"></span> with these instructions:"</em>, then paste.</li>
+      </ol>
+      <div class="su-actions"><button class="btn primary" type="button" id="agent-copy"><svg class="ic sm"><use href="#i-copy"/></svg>Copy agent instructions</button>
+      <a class="btn" data-link="profile" target="_blank" rel="noopener"><svg class="ic sm"><use href="#i-pen"/></svg>Edit my profile</a></div>
+    </section>
     </div>
   </main>
 </div>
 
 <script src="outreach.js"></script>
+<script src="setup.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

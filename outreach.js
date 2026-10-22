@@ -2,55 +2,28 @@
 // message is built only from these lines, so keep them true.
 window.JD_OUTREACH = (() => {
   const NOTE_LIMIT = 300; // LinkedIn connection note limit
-  const ME = {
-    name: 'Prathma',
-    pitch: 'a Sr. Software Engineer with 7+ years in fintech (Intuit, PayPal, Visa)',
-    shortPitch: 'fintech engineer (Intuit, PayPal, Visa)',
-    // Work authorization, used only in messages to recruiters.
-    sponsorship: "I'm currently pursuing an executive doctorate, which authorizes me to work full-time valid for four years. I would need H-1B sponsorship.",
-    shortSponsorship: "My doctoral program authorizes me to work full-time for four years; I'd need H-1B sponsorship.",
-  };
+  // Everything personal comes from the Profile tab of the user's tracker (see setProfile).
+  // Until it loads, messages use neutral wording and never claim a specific skill.
+  const ME = { name: '', pitch: 'a software engineer', shortPitch: 'software engineer', sponsorship: '', shortSponsorship: '' };
 
   // Highlights from the resume, matched to a role by keywords.
-  // long: used in InMails. short: used in connection notes.
-  const HIGHLIGHTS = [
-    { keys: ['ai', 'ml', 'llm', 'llms', 'genai', 'machine learning', 'rag', 'agent', 'agents', 'langchain', 'embeddings'],
-      long: 'built a GenAI RAG engine at Visa (LangChain, OpenAI embeddings) that automated review of long contract documents',
-      short: 'built a GenAI RAG engine at Visa', area: 'AI applications' },
-    { keys: ['payment', 'payments', 'checkout', 'merchant', 'merchants', 'commerce', 'billing', 'fintech', 'money', 'card', 'cards', 'payouts', 'ledger'],
-      long: 'built payment and compliance flows at Visa and PayPal, including Shopify merchant onboarding and payouts',
-      short: 'built payments systems at Visa and PayPal', area: 'payments' },
-    { keys: ['payroll', 'hr', 'workforce', 'benefits', 'compliance', 'verification', 'kyc', 'risk'],
-      long: 'work on payroll-critical systems at Intuit and shipped compliance verification fixes for Shopify merchants at PayPal',
-      short: 'work on payroll systems at Intuit', area: 'payroll and compliance' },
-    { keys: ['platform', 'infrastructure', 'infra', 'data', 'streaming', 'kafka', 'distributed', 'reliability', 'observability', 'sre', 'event driven', 'pipeline', 'pipelines', 'scalability'],
-      long: 'am leading a move to event-driven Kafka at Intuit that cut data latency from 40 to 50 minutes down to near real-time',
-      short: 'cut pipeline latency to near real-time at Intuit', area: 'platform and data infrastructure' },
-    { keys: ['api', 'apis', 'graphql', 'integration', 'integrations', 'developer'],
-      long: "led Visa's move from REST to GraphQL, which other teams across Visa then adopted",
-      short: 'led a REST-to-GraphQL move at Visa', area: 'APIs' },
-    { keys: ['frontend', 'front end', 'full stack', 'fullstack', 'full-stack', 'react', 'angular', 'web', 'ui', 'typescript'],
-      long: 'built full-stack Angular and Spring Boot apps at Visa used across 5 internal platforms, improving analyst workflows by 25%',
-      short: 'build full-stack apps (React, Angular, Spring Boot)', area: 'full-stack engineering' },
-    { keys: ['backend', 'back end', 'microservice', 'microservices', 'java', 'spring', 'services', 'server', 'mongodb'],
-      long: 're-architected legacy services into Spring Boot microservices at Visa, improving response times by 35% under load',
-      short: 'scaled Java microservices at Visa', area: 'backend systems' },
-  ];
-  const DEFAULT = HIGHLIGHTS[1];
+  // long: used in InMails ("I <long>"). short: used in connection notes ("I <short>"). area: "my background in <area>".
+  let HIGHLIGHTS = [];
+  const FALLBACK = { keys: [], long: 'have shipped production systems end to end', short: 'ship production systems end to end', area: 'software engineering' };
 
-  // Skills on the resume. Only these are ever named as a match with a posting.
-  const SKILLS = [
-    ['Java', /\bjava\b(?!\s*script)/i], ['Spring Boot', /\bspring\b/i], ['Python', /\bpython\b/i], ['TypeScript', /\btypescript\b/i],
-    ['JavaScript', /\bjavascript\b/i], ['React', /\breact\b/i], ['Angular', /\bangular\b/i], ['Node.js', /\bnode(\.js)?\b/i],
-    ['GraphQL', /\bgraphql\b/i], ['REST APIs', /\brest(ful)?\b/i], ['Kafka', /\bkafka\b/i], ['microservices', /\bmicro-?services?\b/i],
-    ['distributed systems', /\bdistributed (systems?|computing)\b/i], ['event-driven systems', /\bevent[- ]driven\b/i],
-    ['MongoDB', /\bmongo(db)?\b/i], ['PostgreSQL', /\bpostgres(ql)?\b/i], ['MySQL', /\bmysql\b/i], ['AWS', /\baws\b|amazon web services/i],
-    ['GCP', /\bgcp\b|google cloud/i], ['Docker', /\bdocker\b/i], ['CI/CD', /\bci\/?cd\b|continuous (integration|delivery)/i],
-    ['observability', /\bobservability\b/i], ['OpenTelemetry', /\bopentelemetry\b/i], ['Datadog', /\bdatadog\b/i], ['LLMs', /\bllms?\b|large language models?/i],
-    ['RAG', /\brag\b|retrieval[- ]augmented/i], ['GenAI', /\bgen(erative)? ?ai\b/i], ['payments', /\bpayments?\b/i],
-    ['compliance', /\bcompliance\b/i], ['payroll', /\bpayroll\b/i], ['fintech', /\bfintech\b|financial services/i],
-    ['test automation', /\b(test|testing) automation\b|\bplaywright\b|\bjunit\b/i], ['FastAPI', /\bfastapi\b/i],
-  ];
+  // Skills on the resume (Profile tab, "Skills" row). Only these are ever named as a match with a posting.
+  // Some names need a smarter pattern than a plain word match.
+  const ALIASES = {
+    'java': /\bjava\b(?!\s*script)/i, 'spring boot': /\bspring\b/i, 'node.js': /\bnode(\.js)?\b/i, 'rest apis': /\brest(ful)?\b/i,
+    'microservices': /\bmicro-?services?\b/i, 'distributed systems': /\bdistributed (systems?|computing)\b/i, 'event-driven systems': /\bevent[- ]driven\b/i,
+    'mongodb': /\bmongo(db)?\b/i, 'postgresql': /\bpostgres(ql)?\b/i, 'aws': /\baws\b|amazon web services/i, 'gcp': /\bgcp\b|google cloud/i,
+    'ci/cd': /\bci\/?cd\b|continuous (integration|delivery)/i, 'llms': /\bllms?\b|large language models?/i, 'rag': /\brag\b|retrieval[- ]augmented/i,
+    'genai': /\bgen(erative)? ?ai\b/i, 'payments': /\bpayments?\b/i, 'fintech': /\bfintech\b|financial services/i,
+    'test automation': /\b(test|testing) automation\b|\bplaywright\b|\bjunit\b/i, 'kubernetes': /\bkubernetes\b|\bk8s\b/i, 'c++': /(^|[^a-z])c\+\+/i,
+  };
+  const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const skillRe = (name) => ALIASES[name.toLowerCase()] || new RegExp('(^|[^a-z0-9])' + escRe(name) + '(?![a-z0-9])', 'i');
+  let SKILLS = [];
 
   const first = (name) => String(name || '').trim().split(/\s+/)[0] || 'there';
   const shortRole = (role) => String(role || 'this role').replace(/\s*[,(\-–|].*$/, '').trim() || role;
@@ -80,7 +53,7 @@ window.JD_OUTREACH = (() => {
       }
       if (s > score) { best = h; score = s; }
     }
-    return best || DEFAULT;
+    return best || HIGHLIGHTS[0] || FALLBACK;
   }
 
   const fit = (opts) => opts.filter(Boolean).find((s) => s.length <= NOTE_LIMIT) || opts.filter(Boolean).reduce((a, b) => (b.length < a.length ? b : a));
@@ -88,23 +61,24 @@ window.JD_OUTREACH = (() => {
   // ---------- Connection notes ----------
   function notes(f, h, sk) {
     const n = first(f.name), r = shortRole(f.role), c = f.company;
+    const ss = ME.shortSponsorship ? ' ' + ME.shortSponsorship : '';
     const fx = sk.length >= 2 ? list(sk.slice(0, 3)) : sk[0] || '';
     const fx2 = sk.length >= 2 ? list(sk.slice(0, 2)) : sk[0] || '';
     const rel = fx ? ` Its focus on ${fx} matches my background.` : '';
     const rel2 = fx2 ? ` Its focus on ${fx2} matches my work.` : '';
     const by = {
       recruiter: [
-        [`Hi ${n}, I'm interested in the ${r} role at ${c}.${rel} I'm a ${ME.shortPitch} and ${h.short}. ${ME.shortSponsorship} Would love to connect!`,
-         `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel2} I ${h.short}. ${ME.shortSponsorship} Would love to connect!`,
-         `Hi ${n}, I'm interested in the ${r} role at ${c}. I'm a ${ME.shortPitch}. ${ME.shortSponsorship} Would love to connect!`,
-         `Hi ${n}, I'm interested in the ${r} role at ${c}. ${ME.shortSponsorship} Would love to connect!`,
+        [`Hi ${n}, I'm interested in the ${r} role at ${c}.${rel} I'm a ${ME.shortPitch} and ${h.short}.${ss} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel2} I ${h.short}.${ss} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}. I'm a ${ME.shortPitch}.${ss} Would love to connect!`,
+         `Hi ${n}, I'm interested in the ${r} role at ${c}.${ss} Would love to connect!`,
          `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel} I'm a ${ME.shortPitch} and ${h.short}. Would love to connect!`,
          `Hi ${n}, I'm interested in the ${r} role at ${c}.${rel2} I ${h.short}. Would love to connect!`,
          `Hi ${n}, I'm interested in the ${r} role at ${c}. I'm a ${ME.shortPitch} and ${h.short}. Would love to connect!`,
          `Hi ${n}, I'm interested in ${r} at ${c} and would love to connect!`],
-        [`Hi ${n}, I'm applying for ${r} at ${c}.${rel} I'm a ${ME.shortPitch}. ${ME.shortSponsorship} Would love to connect.`,
-         `Hi ${n}, I'm applying for ${r} at ${c}. I'm a ${ME.shortPitch}. ${ME.shortSponsorship} Would love to connect.`,
-         `Hi ${n}, I'm applying for ${r} at ${c}. ${ME.shortSponsorship} Would love to connect!`,
+        [`Hi ${n}, I'm applying for ${r} at ${c}.${rel} I'm a ${ME.shortPitch}.${ss} Would love to connect.`,
+         `Hi ${n}, I'm applying for ${r} at ${c}. I'm a ${ME.shortPitch}.${ss} Would love to connect.`,
+         `Hi ${n}, I'm applying for ${r} at ${c}.${ss} Would love to connect!`,
          `Hi ${n}, I'm applying for ${r} at ${c}.${rel} I'm a ${ME.shortPitch} and would love to connect.`,
          `Hi ${n}, I'm applying for ${r} at ${c} and would love to connect. I'm a ${ME.shortPitch}.`,
          `Hi ${n}, I'm applying for ${r} at ${c} and would love to connect!`],
@@ -141,7 +115,8 @@ window.JD_OUTREACH = (() => {
   // ---------- InMails ----------
   function inmails(f, h, sk, posting) {
     const n = first(f.name), r = f.role, c = f.company, link = f.link ? ` (${f.link})` : '';
-    const sign = `\n\nThanks,\n${ME.name}`;
+    const sign = ME.name ? `\n\nThanks,\n${ME.name}` : '\n\nThanks!';
+    const spPara = ME.sponsorship ? `\n\n${ME.sponsorship}\n\n` : '\n\n';
     const team = posting && posting.team ? ` on the ${posting.team} team` : '';
     const rel = sk.length >= 2 ? ` The posting's focus on ${list(sk.slice(0, 3))} matches what I've been doing day to day.`
       : sk.length === 1 ? ` The role's emphasis on ${sk[0]} lines up closely with my background.` : '';
@@ -154,9 +129,9 @@ window.JD_OUTREACH = (() => {
     const sets = {
       recruiter: [
         { subject: `${r} at ${c}`,
-          body: `Hi ${n},\n\nI'm ${ME.pitch}, and I just applied for the ${r} role${team} at ${c}${link}.${rel} A recent highlight: I ${h.long}.\n\n${ME.sponsorship}\n\nWould you be the right person to talk to about this role?${sign}` },
+          body: `Hi ${n},\n\nI'm ${ME.pitch}, and I just applied for the ${r} role${team} at ${c}${link}.${rel} A recent highlight: I ${h.long}.${spPara}Would you be the right person to talk to about this role?${sign}` },
         { subject: `Interested in ${shortRole(r)} at ${c}`,
-          body: `Hi ${n},\n\nI came across the ${r} opening${team} at ${c}${link} and it lines up closely with my background in ${h.area}.${rel} For example, I ${h.long}.\n\n${ME.sponsorship}\n\n${asks.consider}${sign}` },
+          body: `Hi ${n},\n\nI came across the ${r} opening${team} at ${c}${link} and it lines up closely with my background in ${h.area}.${rel} For example, I ${h.long}.${spPara}${asks.consider}${sign}` },
       ],
       manager: [
         { subject: `${shortRole(r)} on your team`,
@@ -186,7 +161,7 @@ window.JD_OUTREACH = (() => {
     const who = f.target ? f.target : `someone on the team at ${c}`;
     const team = posting && posting.team ? ` on the ${posting.team} team` : '';
     const rel = sk.length >= 2 ? ` The role focuses on ${list(sk.slice(0, 3))}, which is what I've been doing day to day.` : '';
-    const sign = `\n\nThanks so much,\n${ME.name}`;
+    const sign = ME.name ? `\n\nThanks so much,\n${ME.name}` : '\n\nThanks so much!';
     return [
       { subject: '', body: `Hi ${n},\n\nHope you're doing well! I'm applying for the ${r} role${team} at ${c}${link}, and I noticed you're connected with ${who}.${rel} I ${h.long}.\n\nWould you be comfortable introducing me? I'm happy to send a short blurb and my resume so it's easy to forward, and no worries at all if you don't know them well.${sign}` },
       { subject: '', body: `Hi ${n},\n\nQuick favor to ask: I'm interested in ${r} at ${c}${link}, and I see you know ${who}. My background in ${h.area} fits the role well (I ${h.long}).\n\nWould you be open to making a quick intro? I can draft a short note you could forward.${sign}` },
@@ -207,12 +182,9 @@ window.JD_OUTREACH = (() => {
   }
 
   // ---------- LinkedIn people searches (opened in your own signed-in browser) ----------
-  // Intuit is left out of ex-colleague searches on purpose: current coworkers.
-  // Edit these to your own schools and past employers (quote names with spaces).
-  const SCHOOLS = ['"Syracuse University"', '"IIIT Allahabad"', '"Indian Institute of Information Technology Allahabad"'];
-  const PAST_EMPLOYERS = ['Visa', 'PayPal'];
-  const SCHOOLS_LABEL = 'Syracuse or IIIT Allahabad';
-  const EMPLOYERS_LABEL = 'Visa or PayPal';
+  // From the Profile tab: schools and past employers (not your current one).
+  let SCHOOLS = [], PAST_EMPLOYERS = [];
+  const quote = (t) => (/\s/.test(t) ? `"${t}"` : t);
   function peopleSearch(company, kind) {
     const base = 'https://www.linkedin.com/search/results/people/?';
     const c = String(company || '').trim();
@@ -222,16 +194,35 @@ window.JD_OUTREACH = (() => {
     // geoUrn 103644278 is LinkedIn's filter for people located in the United States.
     if (kind === 'first') params.network = '["F"]';
     else if (kind === 'second') params.network = '["S"]';
-    else if (kind === 'alumni') params.keywords = SCHOOLS.join(' OR ');
-    else if (kind === 'colleagues') params.keywords = PAST_EMPLOYERS.join(' OR ');
+    else if (kind === 'alumni' && SCHOOLS.length) params.keywords = SCHOOLS.map(quote).join(' OR ');
+    else if (kind === 'colleagues' && PAST_EMPLOYERS.length) params.keywords = PAST_EMPLOYERS.map(quote).join(' OR ');
     return base + new URLSearchParams(params).toString();
   }
-  const SEARCHES = [
+  const orList = (a) => a.join(' or ');
+  const searches = () => [
     { kind: 'first', label: 'Your connections', hint: '1st-degree: ask for a referral' },
     { kind: 'second', label: '2nd-degree', hint: 'Ask a mutual connection for an intro' },
-    { kind: 'alumni', label: 'Alumni', hint: SCHOOLS_LABEL },
-    { kind: 'colleagues', label: 'Ex-colleagues', hint: 'Also worked at ' + EMPLOYERS_LABEL },
+    { kind: 'alumni', label: 'Alumni', hint: SCHOOLS.length ? orList(SCHOOLS.slice(0, 2).map((x) => x.replace(/ University$/, ''))) : 'Add your schools in the Profile tab' },
+    { kind: 'colleagues', label: 'Ex-colleagues', hint: PAST_EMPLOYERS.length ? 'Also worked at ' + orList(PAST_EMPLOYERS.slice(0, 3)) : 'Add past employers in the Profile tab' },
   ];
+
+  // ---------- Profile (one row per field in the tracker's Profile tab) ----------
+  const splitList = (v) => String(v || '').split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+  function setProfile(p) {
+    p = p || {};
+    ME.name = p.firstName || '';
+    ME.pitch = p.pitch || 'a software engineer';
+    ME.shortPitch = p.shortPitch || ME.pitch.replace(/^an? /i, '');
+    ME.sponsorship = p.sponsorship || '';
+    ME.shortSponsorship = p.shortSponsorship || p.sponsorship || '';
+    SCHOOLS = splitList(p.schools);
+    PAST_EMPLOYERS = splitList(p.pastEmployers);
+    SKILLS = splitList(p.skills).map((name) => [name, skillRe(name)]);
+    HIGHLIGHTS = (p.highlights || []).filter((h) => h && h.long).map((h) => {
+      const keys = splitList(h.keywords).map((k) => k.toLowerCase());
+      return { keys, long: h.long.replace(/\.$/, ''), short: (h.short || h.long).replace(/\.$/, ''), area: h.area || keys[0] || 'software engineering' };
+    });
+  }
 
   // ---------- Reading a job posting from its link ----------
   // Greenhouse, Lever and Ashby publish postings through public APIs a browser can read.
@@ -275,5 +266,5 @@ window.JD_OUTREACH = (() => {
     throw new Error('unsupported');
   }
 
-  return { draft, readPosting, matchedSkills, peopleSearch, SEARCHES, LIMITS: { note: NOTE_LIMIT, subject: 200, inmail: 1900, message: 8000 } };
+  return { draft, readPosting, matchedSkills, peopleSearch, setProfile, get SEARCHES() { return searches(); }, LIMITS: { note: NOTE_LIMIT, subject: 200, inmail: 1900, message: 8000 } };
 })();
