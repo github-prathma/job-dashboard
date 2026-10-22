@@ -47,7 +47,7 @@
   const AVATAR = ['#2563eb', '#0ea5e9', '#8b5cf6', '#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#14b8a6', '#6366f1', '#ec4899'];
   const PALETTE = ['--brand', '--s-referral', '--s-offer', '--s-ready', '--s-rejected', '--brand-2', '--s-interview', '--s-applied'];
 
-  let needConsent = false;
+  let needConsent = false, chooseAccount = false;
   let token = null, tokenExpiry = 0, tokenClient = null, pendingResolve = null;
   let PROFILE = null;
   let drafts = [], jobs = [], runs = [], lastLoaded = null, timer = null, usingSample = false, realData = null;
@@ -134,7 +134,8 @@
     if (!tokenClient) return;
     $('gate-err').textContent = '';
     $('signin-tab').hidden = false; // in case the popup is blocked or stays blank
-    tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : '' });
+    tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : chooseAccount ? 'select_account' : '' });
+    chooseAccount = false;
   });
   $('signin-tab').addEventListener('click', () => signInSameTab(needConsent));
   $('signout').addEventListener('click', () => {
@@ -256,7 +257,8 @@
     if (!WS) {
       // First visit with this Google account: build the workspace.
       $('gate').hidden = true; $('app').hidden = true;
-      window.JD_SETUP.open({ api, tz: S.tz, getToken: async () => { await ensureToken(); return token; }, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
+      window.JD_SETUP.open({ api, tz: S.tz,
+        onSwitchAccount: () => { if (token) google.accounts.oauth2.revoke(token, () => {}); clearToken(); chooseAccount = true; showGate('signin', 'Pick the Google account that has your Job Agent folder.'); }, getToken: async () => { await ensureToken(); return token; }, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
       return;
     }
     applyLinks();

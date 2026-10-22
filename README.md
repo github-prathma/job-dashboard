@@ -36,7 +36,7 @@ A personal dashboard for your job search. It shows the jobs your agents found, a
 No coding, no Google Cloud, no API keys.
 
 1. **Open the site** and click **Sign in with Google**. Use any Google account; Google asks you to let the app "see, edit, create and delete only the specific Google Drive files you use with this app". That's the narrowest Drive permission Google offers.
-2. **Answer the setup questions** (name, the roles you want, your resume, a few highlights). The wizard then creates this in your Drive:
+2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, whether you need sponsorship, and your resume. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
 
    | In your **Job Agent** folder | What it's for |
    |---|---|
@@ -52,7 +52,7 @@ No coding, no Google Cloud, no API keys.
 
    Without the agents, the dashboard still works: type jobs into the **Jobs** tab yourself.
 
-**Coming back later** (any browser, any device): just sign in with the same Google account. The site finds your tracker and opens your dashboard; you're only asked questions once.
+**Coming back later** (any browser, any device): just sign in with the same Google account. The site finds the workspace it created and opens your dashboard straight away; setup only happens once per Google account. The setup screen shows which account you're signed in with, with a **Use a different account** link in case you picked the wrong one.
 
 **Already have a tracker** (for example one your agents made before this site existed)? On the first screen choose **I already have a Job Application Tracker** and pick it from your Drive. Nothing is asked or changed except adding any missing tabs (Outreach, Runs, Profile).
 

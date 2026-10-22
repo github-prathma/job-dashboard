@@ -1,4 +1,4 @@
-// First-run setup: asks a few questions, then creates the user's Job Agent workspace
+// First-run setup: one short screen (name, roles, resume), then creates the user's Job Agent workspace
 // in their own Google Drive (folder, tracker sheet, search config, base resume).
 // Uses only the drive.file permission, so the app can see nothing but these files.
 window.JD_SETUP = (() => {
@@ -18,7 +18,7 @@ window.JD_SETUP = (() => {
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const list = (t) => String(t || '').split(',').map((x) => x.trim()).filter(Boolean);
 
-  let ctx = null, step = 1, created = {};
+  let ctx = null, step = 1, created = {}, retry = false;
   const form = () => $('su-form');
   const val = (n) => { const e = form().elements[n]; return e ? String(e.value || '').trim() : ''; };
 
@@ -29,14 +29,12 @@ window.JD_SETUP = (() => {
     document.querySelectorAll('#su-steps li').forEach((li) => {
       const k = +li.dataset.step; li.classList.toggle('on', k === n); li.classList.toggle('done', k < n);
     });
-    $('su-back').style.visibility = (n > 1 || (n === 1 && (window.JD_CONFIG || {}).GOOGLE_API_KEY)) && !created.done ? 'visible' : 'hidden';
-    $('su-skip').hidden = n !== 4;
-    $('su-next').innerHTML = '';
-    $('su-next').append(n === 5 ? 'Create my workspace' : 'Continue');
-    $('su-nav').hidden = !!created.done || n === 0;
+    $('su-back').style.visibility = n === 1 && (window.JD_CONFIG || {}).GOOGLE_API_KEY ? 'visible' : 'hidden';
+    $('su-next').textContent = 'Create my workspace';
+    $('su-nav').hidden = n !== 1;
     $('su-err').textContent = '';
     const f = form().querySelector(`section[data-step="${n}"] input:not([type=radio]):not([type=file])`);
-    if (f && n < 5) setTimeout(() => f.focus(), 30);
+    if (f && n === 1 && !f.value) setTimeout(() => f.focus(), 30);
     window.scrollTo(0, 0);
   }
   function validate(n) {
@@ -45,30 +43,10 @@ window.JD_SETUP = (() => {
     sec.querySelectorAll('input[required]').forEach((i) => {
       const ok = !!i.value.trim(); i.setAttribute('aria-invalid', String(!ok)); if (!ok && !bad) bad = i;
     });
-    if (n === 1 && val('needSponsorship') === 'yes' && !val('sponsorship')) { bad = form().elements.sponsorship; }
+
     if (bad) { $('su-err').textContent = 'Please fill in the highlighted field.'; bad.focus(); return false; }
     return true;
   }
-
-  function addHighlight(data = {}) {
-    const box = $('su-highlights');
-    if (box.children.length >= 6) return;
-    const n = box.children.length + 1;
-    const d = document.createElement('div'); d.className = 'hl';
-    d.innerHTML = `<div class="hl-head"><span>Highlight ${n}</span></div>
-      <label class="fld"><span>What you did <em>finishes "I …"</em></span><input data-h="long" placeholder="e.g. built a fraud-scoring service at Square that cut chargebacks 20%"></label>
-      <div class="f2">
-        <label class="fld"><span>Short version <em>for connection notes</em></span><input data-h="short" placeholder="e.g. built fraud scoring at Square"></label>
-        <label class="fld"><span>Area <em>finishes "my background in …"</em></span><input data-h="area" placeholder="e.g. risk and payments"></label>
-      </div>
-      <label class="fld"><span>Keywords that match this highlight <em>comma-separated</em></span><input data-h="keywords" placeholder="e.g. fraud, risk, payments, ml"></label>`;
-    for (const [k, v] of Object.entries(data)) { const i = d.querySelector(`[data-h="${k}"]`); if (i) i.value = v; }
-    box.append(d);
-  }
-  const highlights = () => [...document.querySelectorAll('#su-highlights .hl')].map((d) => {
-    const g = (k) => d.querySelector(`[data-h="${k}"]`).value.trim();
-    return { long: g('long'), short: g('short'), area: g('area'), keywords: g('keywords') };
-  }).filter((h) => h.long);
 
   // ---------- Google calls ----------
   const api = (...a) => ctx.api(...a);
@@ -87,12 +65,12 @@ window.JD_SETUP = (() => {
       HEADERS.Profile,
       ['First name', a.firstName, '', '', '', help],
       ['Full name', a.fullName],
-      ['Pitch', a.pitch, a.shortPitch],
-      ['Work authorization', a.needSponsorship === 'yes' ? a.sponsorship : '', a.needSponsorship === 'yes' ? a.shortSponsorship : ''],
-      ['Schools', a.schools],
-      ['Past employers', a.pastEmployers],
-      ['Skills', a.skills],
-      ...a.highlights.map((h) => ['Highlight', h.long, h.short, h.area, h.keywords]),
+      ['Pitch', a.pitch, ''],
+      ['Work authorization', a.needSponsorship === 'yes' ? a.sponsorship : '', ''],
+      ['Schools', ''],
+      ['Past employers', ''],
+      ['Skills', ''],
+      ['Highlight', '', '', '', ''],
       ['Morning run', a.morning],
       ['Evening run', a.evening],
       ['Time zone', a.tz],
@@ -126,18 +104,18 @@ window.JD_SETUP = (() => {
 
   // ---------- Create everything ----------
   async function create() {
+    const roles = val('roles');
     const a = {
-      firstName: val('firstName'), fullName: val('fullName'), pitch: val('pitch'), shortPitch: val('shortPitch'),
-      needSponsorship: val('needSponsorship') || form().querySelector('[name=needSponsorship]:checked').value,
-      sponsorship: val('sponsorship'), shortSponsorship: val('shortSponsorship'),
-      roles: val('roles'), locations: val('locations'), watchlist: val('watchlist'), skip: val('skip'),
-      dailyLimit: Math.max(1, Math.min(50, +val('dailyLimit') || 10)), morning: val('morning') || '7:45 AM', evening: val('evening') || '5:45 PM', tz: ctx.tz,
-      skills: val('skills'), schools: val('schools'), pastEmployers: val('pastEmployers'), highlights: highlights(),
+      firstName: val('firstName'), fullName: val('fullName'),
+      pitch: 'a ' + (list(roles)[0] || 'software engineer'),
+      needSponsorship: form().querySelector('[name=needSponsorship]:checked').value,
+      sponsorship: val('sponsorship') || "I'll need visa sponsorship.",
+      roles, locations: val('locations'), watchlist: '', skip: '',
+      dailyLimit: (window.JD_CONFIG || {}).DAILY_LIMIT || 10, morning: '7:45 AM', evening: '5:45 PM', tz: ctx.tz,
     };
-    a.needSponsorship = form().querySelector('[name=needSponsorship]:checked').value;
-    const file = form().elements.resumeFile.files[0], text = val('resumeText');
+    const file = form().elements.resumeFile.files[0], text = '';
 
-    $('su-review').hidden = true; $('su-progress').hidden = false; $('su-nav').hidden = true;
+    show(2); $('su-progress').hidden = false; $('su-done').hidden = true;
     const prog = $('su-prog'); prog.replaceChildren();
     const task = async (label, key, fn) => {
       const li = document.createElement('li'); const sp = document.createElement('span'); sp.className = 'spinner';
@@ -149,6 +127,17 @@ window.JD_SETUP = (() => {
       } catch (e) { li.className = 'fail'; sp.remove(); throw e; }
     };
     try {
+      // A setup that stopped halfway leaves its folders behind; reuse them instead of making duplicates.
+      if (!('folder' in created)) {
+        const prev = await api(DRIVE + '?' + new URLSearchParams({ q: "appProperties has { key='jobAgentRole' and value='root' } and trashed = false", orderBy: 'createdTime desc', pageSize: '1', fields: 'files(id)' }));
+        const root = (prev.files || [])[0];
+        if (root) {
+          created.folder = root.id;
+          const kids = await api(DRIVE + '?' + new URLSearchParams({ q: `'${root.id}' in parents and trashed = false`, fields: 'files(id,appProperties)' }));
+          const byRole = Object.fromEntries((kids.files || []).map((f) => [(f.appProperties || {}).jobAgentRole, f.id]));
+          if (byRole.resumes && byRole.outreach && byRole.runlogs) created.subs = { resumes: byRole.resumes, outreach: byRole.outreach, runlogs: byRole.runlogs };
+        }
+      }
       await task('Creating the Job Agent folder', 'folder', async () => (await mkFolder('Job Agent', null, 'root')).id);
       await task('Creating folders for resumes, outreach and run logs', 'subs', async () => {
         const [r, o, l] = await Promise.all([mkFolder('Tailored Resumes', created.folder, 'resumes'), mkFolder('Referral Outreach Drafts', created.folder, 'outreach'), mkFolder('Run Logs', created.folder, 'runlogs')]);
@@ -199,12 +188,13 @@ window.JD_SETUP = (() => {
     } catch (e) {
       $('su-err').textContent = /confirm access/.test(e.message) ? e.message + '.' : 'Something went wrong: ' + e.message.slice(0, 160) + '. Click Try again; finished steps won’t be repeated.';
       $('su-nav').hidden = false; $('su-next').textContent = 'Try again'; $('su-back').style.visibility = 'hidden';
+      retry = true;
       return;
     }
     created.done = true;
     created.ws = { tracker: created.tracker, folder: created.folder, config: created.config, resume: created.resume, resumes: created.subs.resumes, outreach: created.subs.outreach, runlogs: created.subs.runlogs, profileGid: String(SHEET_IDS.Profile) };
     created.who = { fullName: a.fullName, firstName: a.firstName, tz: a.tz, morning: a.morning, evening: a.evening };
-    $('su-progress').hidden = true; $('su-done').hidden = false;
+    $('su-progress').hidden = true; $('su-done').hidden = false; $('su-nav').hidden = true;
     document.querySelectorAll('.su-times').forEach((s) => { s.textContent = `${a.morning} and ${a.evening}`; });
     document.querySelectorAll('#su-steps li').forEach((li) => { li.classList.remove('on'); li.classList.add('done'); });
   }
@@ -293,20 +283,18 @@ window.JD_SETUP = (() => {
     if (wired) return; wired = true;
     form().addEventListener('submit', (e) => {
       e.preventDefault();
-      if (step < 5) { if (validate(step)) show(step + 1); return; }
-      create();
+      if (retry || validate(1)) { retry = false; create(); }
     });
     $('su-back').addEventListener('click', () => { if (step >= 1) show(step - 1); });
     $('su-new').addEventListener('click', () => show(1));
     $('su-connect').addEventListener('click', connectExisting);
-    $('su-skip').addEventListener('click', () => show(5));
-    $('su-add-hl').addEventListener('click', () => addHighlight());
+    $('su-switch').addEventListener('click', () => { $('setup').hidden = true; ctx.onSwitchAccount(); });
     form().querySelectorAll('[name=needSponsorship]').forEach((r) => r.addEventListener('change', () => {
       form().querySelector('.su-spons').hidden = form().querySelector('[name=needSponsorship]:checked').value !== 'yes';
     }));
     form().elements.resumeFile.addEventListener('change', () => {
       const f = form().elements.resumeFile.files[0];
-      $('su-file-name').textContent = f ? f.name : 'Choose your resume file';
+      $('su-file-name').textContent = f ? f.name : 'Add your resume';
       $('su-drop').classList.toggle('has', !!f);
     });
     $('su-copy').addEventListener('click', () => copyPrompt($('su-copy'), created.ws, created.who));
@@ -317,12 +305,18 @@ window.JD_SETUP = (() => {
     ctx = c; created = {};
     wire();
     $('setup').hidden = false;
-    $('su-review').hidden = false; $('su-progress').hidden = true; $('su-done').hidden = true;
-    if (!$('su-highlights').children.length) { addHighlight(); addHighlight(); }
-    let zone = c.tz;
-    try { zone = new Intl.DateTimeFormat('en-US', { timeZone: c.tz, timeZoneName: 'long' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName').value; } catch (e) { /* keep IANA name */ }
-    $('su-tz').textContent = `Times are in your time zone (${zone}). These are when you'll schedule the agents in Claude.`;
+    retry = false;
+    $('su-progress').hidden = true; $('su-done').hidden = true;
     $('su-connect-note').textContent = '';
+    // Prefill from the Google account so most people only add a resume.
+    $('su-who').textContent = 'your Google account';
+    api('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)').then((res) => {
+      const u = res.user || {};
+      if (u.emailAddress) $('su-who').textContent = u.emailAddress;
+      const f = form().elements;
+      if (u.displayName && !f.fullName.value) f.fullName.value = u.displayName;
+      if (u.displayName && !f.firstName.value) f.firstName.value = u.displayName.split(/\s+/)[0];
+    }).catch(() => { /* prefill is a nicety */ });
     // Without a Picker API key there's nothing to choose: go straight to the setup questions.
     show((window.JD_CONFIG || {}).GOOGLE_API_KEY ? 0 : 1);
   }
