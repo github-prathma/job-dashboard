@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/logo.svg" width="96" alt="Logo: a paper plane whose dotted trail draws a chat bubble"></p>
 
-# Job Search Command Center
+# Referly
 
 **Try it:** https://github-prathma.github.io/job-dashboard/ (sign in with any Google account, or click **Or look around with sample data first**).
 
@@ -10,7 +10,7 @@
 
 A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
-**Your data stays in your own Google Drive.** The website holds no data. The first time you sign in, it creates a **Job Agent** folder in your Drive with everything it needs. Google only lets the app open the files it created there; it can't see anything else in your Drive.
+**Your data stays in your own Google Drive.** The website holds no data. The first time you sign in, it creates a **Referly** folder in your Drive with everything it needs. Google only lets the app open the files it created there; it can't see anything else in your Drive.
 
 **Nothing is sent for you.** The dashboard and the agents prepare everything; you apply and send messages yourself.
 
@@ -38,7 +38,7 @@ No coding, no Google Cloud, no API keys.
 1. **Open the site** and click **Sign in with Google**. Use any Google account; Google asks you to let the app "see, edit, create and delete only the specific Google Drive files you use with this app". That's the narrowest Drive permission Google offers.
 2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, whether you need sponsorship, and your resume. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
 
-   | In your **Job Agent** folder | What it's for |
+   | In your **Referly** folder | What it's for |
    |---|---|
    | Job Application Tracker (Google Sheet) | Tabs: **Jobs** (one row per job), **Outreach** (drafted messages), **Runs** (one row per agent run), **Profile** (your details for messages) |
    | SEARCH CONFIG (edit me) | Your rules for the agents: roles, locations, companies, templates |
@@ -85,7 +85,7 @@ Every job has **Find people** buttons that open LinkedIn's own search in your br
 If someone from a similarly named company shows up, click **Current company** on LinkedIn and pick the exact company page.
 
 ### One-click drafting from a LinkedIn profile (bookmarklet)
-1. On the **LinkedIn outreach** page, drag the **Draft with Job Agent** button to your browser's bookmarks bar (in Chrome, show the bar with Cmd+Shift+B or Ctrl+Shift+B).
+1. On the **LinkedIn outreach** page, drag the **Draft with Referly** button to your browser's bookmarks bar (in Chrome, show the bar with Cmd+Shift+B or Ctrl+Shift+B).
 2. On the dashboard, click any **Find people** button for a job. The dashboard remembers that job.
 3. Open someone's LinkedIn profile and click the bookmark. The message page opens with their name, profile link, the job, their role and the right message type already filled in.
 
@@ -119,7 +119,7 @@ Everyone else can skip this. You do it once, and then anyone can sign in.
 1. **Fork** this repo, then **Settings → Pages**: Deploy from a branch, **main**, **/ (root)**. Your site is `https://<your-github-username>.github.io/job-dashboard/`.
 2. In https://console.cloud.google.com create a project, then **APIs & Services → Library**: enable **Google Drive API** and **Google Sheets API**.
 3. **Google Auth Platform**:
-   - **Branding**: app name (e.g. "Job Agent"), support email, and your site address as the home page.
+   - **Branding**: app name (e.g. "Referly"), support email, and your site address as the home page.
    - **Audience**: user type **External**, then click **Publish app** so the status is **In production**. No test users needed.
    - **Data access**: add only `https://www.googleapis.com/auth/drive.file`. Google treats it as non-sensitive, so the app doesn't need Google's review.
    - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash). Under **Authorized redirect URIs** add your full site address with the trailing slash, `https://<your-github-username>.github.io/job-dashboard/` (used by "Sign in in this tab" when a browser blocks Google's sign-in window).

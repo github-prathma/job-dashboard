@@ -1,6 +1,6 @@
 # SEARCH CONFIG (edit me)
 
-Copy this into a Google Doc named "SEARCH CONFIG (edit me)" in your Job Agent folder and fill in the brackets. The agents read this doc at the start of every run, so changes here take effect on the next run.
+Copy this into a Google Doc named "SEARCH CONFIG (edit me)" in your Referly folder and fill in the brackets. The agents read this doc at the start of every run, so changes here take effect on the next run.
 
 ## 1. Roles
 - Titles to include: [e.g. Senior Software Engineer, Staff Software Engineer, Senior Backend Engineer]

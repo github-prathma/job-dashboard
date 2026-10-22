@@ -1,4 +1,4 @@
-// First-run setup: one short screen (name, roles, resume), then creates the user's Job Agent workspace
+// First-run setup: one short screen (name, roles, resume), then creates the user's Referly workspace
 // in their own Google Drive (folder, tracker sheet, search config, base resume).
 // Uses only the drive.file permission, so the app can see nothing but these files.
 window.JD_SETUP = (() => {
@@ -141,7 +141,7 @@ window.JD_SETUP = (() => {
           if (byRole.resumes && byRole.outreach && byRole.runlogs) created.subs = { resumes: byRole.resumes, outreach: byRole.outreach, runlogs: byRole.runlogs };
         }
       }
-      await task('Creating the Job Agent folder', 'folder', async () => (await mkFolder('Job Agent', null, 'root')).id);
+      await task('Creating the Referly folder', 'folder', async () => (await mkFolder('Referly', null, 'root')).id);
       await task('Creating folders for resumes, outreach and run logs', 'subs', async () => {
         const [r, o, l] = await Promise.all([mkFolder('Tailored Resumes', created.folder, 'resumes'), mkFolder('Referral Outreach Drafts', created.folder, 'outreach'), mkFolder('Run Logs', created.folder, 'runlogs')]);
         return { resumes: r.id, outreach: o.id, runlogs: l.id };

@@ -10,7 +10,7 @@
     set('gate-runs', 'Agents run twice a day, on your schedule'); set('side-am', S.morning); set('side-pm', S.evening);
     set('k-limit', 'of ' + S.dailyLimit); set('side-limit', S.dailyLimit + ' jobs');
   }
-  // drive.file: the app can only see files it created (your Job Agent workspace) — nothing else in your Drive.
+  // drive.file: the app can only see files it created (your Referly workspace) — nothing else in your Drive.
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   const SELF_URL = location.origin + location.pathname.replace(/index\.html$/, '');
 
@@ -258,7 +258,7 @@
       // First visit with this Google account: build the workspace.
       $('gate').hidden = true; $('app').hidden = true;
       window.JD_SETUP.open({ api, tz: S.tz,
-        onSwitchAccount: () => { if (token) google.accounts.oauth2.revoke(token, () => {}); clearToken(); chooseAccount = true; showGate('signin', 'Pick the Google account that has your Job Agent folder.'); }, getToken: async () => { await ensureToken(); return token; }, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
+        onSwitchAccount: () => { if (token) google.accounts.oauth2.revoke(token, () => {}); clearToken(); chooseAccount = true; showGate('signin', 'Pick the Google account that has your Referly folder.'); }, getToken: async () => { await ensureToken(); return token; }, onDone: (ws) => { WS = ws; start(); }, onCancel: () => { clearToken(); showGate('signin'); } });
       return;
     }
     applyLinks();
@@ -871,7 +871,7 @@
 
     const list = drafts.filter((d) => (!relFilter || relOf(d) === relFilter) && (!hideSent || !sent[draftId(d)]));
     if (!drafts.length) return emptyBox(box, 'No agent drafts yet. After each run, the people the agents found for every job show up here, with your 1st-degree connections first.', 'users', usingSample || jobs.length ? null : sampleButton());
-    if (!list.length) return emptyBox(box, relFilter === 'Your connection' && !counts['Your connection'] ? 'No drafts to your connections yet. Upload "LinkedIn Connections.csv" to the Job Agent folder so the agents can find people you know at each company.' : 'Nothing here with these filters.', 'users');
+    if (!list.length) return emptyBox(box, relFilter === 'Your connection' && !counts['Your connection'] ? 'No drafts to your connections yet. Upload "LinkedIn Connections.csv" to the Referly folder so the agents can find people you know at each company.' : 'Nothing here with these filters.', 'users');
 
     const groups = new Map();
     for (const d of list) { const k = `${d['Company']}|${d['Job Title']}|${d['Job Link']}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(d); }
@@ -997,7 +997,7 @@
   // page you're looking at and opens this dashboard's composer with them filled in.
   (() => {
     const dash = location.origin + location.pathname;
-    const code = `(()=>{if(!/linkedin\\.com\\/in\\//.test(location.href)){alert('Open a LinkedIn profile first, then click Draft with Job Agent.');return;}`
+    const code = `(()=>{if(!/linkedin\\.com\\/in\\//.test(location.href)){alert('Open a LinkedIn profile first, then click Draft with Referly.');return;}`
       + `const h=document.querySelector('main h1')||document.querySelector('h1');`
       + `const name=((h&&h.innerText)||document.title.split('|')[0]).replace(/^\\s*\\(\\d+\\+?\\)\\s*/,'').replace(/\\s+/g,' ').trim();`
       + `const card=(h&&(h.closest('section')||h.parentElement))||document.body;`
