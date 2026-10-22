@@ -381,6 +381,19 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
 .linkbtn.inline { width: auto; margin: 0 0 0 auto; padding: 0; }
 .su-later { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
 .su-later .ic { color: var(--accent); margin-top: 3px; }
+.ms { position: relative; }
+.ms summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text); background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-height: 42px; }
+.ms summary::-webkit-details-marker { display: none; }
+.ms summary span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms[open] summary { border-color: var(--brand); outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.ms[open] summary .ic { transform: rotate(180deg); }
+.ms summary[aria-invalid="true"] { border-color: var(--bad); }
+.ms-panel { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px); max-height: 300px; overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); }
+.ms-opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text); }
+.ms-opt:hover { background: var(--grid); }
+.ms-opt input { width: 16px; height: 16px; accent-color: var(--brand); margin: 0; }
+.ms-other { display: grid; gap: 4px; padding: 8px 10px 6px; border-top: 1px solid var(--line); margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.ms-other input { font: inherit; font-size: 14px; font-weight: 500; color: var(--text); background: var(--canvas); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 .setup-nav { display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
 .setup-nav .grow { flex: 1; }
 .su-tree, .su-tree ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -438,6 +451,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
   <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
   <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></symbol>
@@ -550,7 +564,15 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
         </div>
         <label class="fld"><span>Roles you want <em>comma-separated</em></span><input name="roles" required value="Senior Software Engineer, Staff Software Engineer"></label>
         <div class="f2">
-          <label class="fld"><span>Where</span><input name="locations" required value="Remote (US)"></label>
+          <div class="fld"><span id="su-where-label">Where <em>pick one or more</em></span>
+            <details class="ms" id="su-where">
+              <summary aria-labelledby="su-where-label"><span id="su-where-text">Remote (US)</span><svg class="ic sm"><use href="#i-chevron"/></svg></summary>
+              <div class="ms-panel"><label class="ms-opt"><input type="checkbox" value="Remote (US)" checked><span>Remote (US)</span></label><label class="ms-opt"><input type="checkbox" value="San Francisco Bay Area"><span>San Francisco Bay Area</span></label><label class="ms-opt"><input type="checkbox" value="Seattle"><span>Seattle</span></label><label class="ms-opt"><input type="checkbox" value="New York City"><span>New York City</span></label><label class="ms-opt"><input type="checkbox" value="Los Angeles"><span>Los Angeles</span></label><label class="ms-opt"><input type="checkbox" value="Austin"><span>Austin</span></label><label class="ms-opt"><input type="checkbox" value="Boston"><span>Boston</span></label><label class="ms-opt"><input type="checkbox" value="Chicago"><span>Chicago</span></label><label class="ms-opt"><input type="checkbox" value="Denver"><span>Denver</span></label><label class="ms-opt"><input type="checkbox" value="Washington, DC"><span>Washington, DC</span></label><label class="ms-opt"><input type="checkbox" value="Atlanta"><span>Atlanta</span></label><label class="ms-opt"><input type="checkbox" value="Dallas"><span>Dallas</span></label><label class="ms-opt"><input type="checkbox" value="Anywhere in the US"><span>Anywhere in the US</span></label>
+                <label class="ms-other"><span>Other</span><input id="su-where-other" placeholder="e.g. Toronto, London"></label>
+              </div>
+            </details>
+            <input type="hidden" name="locations" value="Remote (US)">
+          </div>
           <fieldset class="fld"><legend>Need visa sponsorship?</legend>
             <div class="seg">
               <label><input type="radio" name="needSponsorship" value="no" checked><span>No</span></label>

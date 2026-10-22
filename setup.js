@@ -44,6 +44,9 @@ window.JD_SETUP = (() => {
       const ok = !!i.value.trim(); i.setAttribute('aria-invalid', String(!ok)); if (!ok && !bad) bad = i;
     });
 
+    const where = $('su-where').querySelector('summary');
+    where.setAttribute('aria-invalid', String(!val('locations')));
+    if (!bad && !val('locations')) { $('su-err').textContent = 'Pick at least one place you want to work.'; $('su-where').open = true; return false; }
     if (bad) { $('su-err').textContent = 'Please fill in the highlighted field.'; bad.focus(); return false; }
     return true;
   }
@@ -288,6 +291,15 @@ window.JD_SETUP = (() => {
     $('su-back').addEventListener('click', () => { if (step >= 1) show(step - 1); });
     $('su-new').addEventListener('click', () => show(1));
     $('su-connect').addEventListener('click', connectExisting);
+    // "Where" multi-select: keep the hidden field and the summary text in sync.
+    const syncWhere = () => {
+      const picked = [...$('su-where').querySelectorAll('.ms-opt input:checked')].map((i) => i.value).concat(list($('su-where-other').value));
+      form().elements.locations.value = picked.join(', ');
+      $('su-where-text').textContent = picked.length ? picked.join(', ') : 'Choose places';
+    };
+    $('su-where').addEventListener('change', syncWhere);
+    $('su-where-other').addEventListener('input', syncWhere);
+    document.addEventListener('click', (e) => { if ($('su-where').open && !$('su-where').contains(e.target)) $('su-where').open = false; });
     $('su-switch').addEventListener('click', () => { $('setup').hidden = true; ctx.onSwitchAccount(); });
     form().querySelectorAll('[name=needSponsorship]').forEach((r) => r.addEventListener('change', () => {
       form().querySelector('.su-spons').hidden = form().querySelector('[name=needSponsorship]:checked').value !== 'yes';
