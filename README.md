@@ -2,7 +2,7 @@
 
 # Referly
 
-**Try it:** https://github-prathma.github.io/job-dashboard/ (sign in with any Google account, or click **Or look around with sample data first**).
+**Try it:** https://github-prathma.github.io/referly/ (sign in with any Google account, or click **Or look around with sample data first**).
 
 ![Demo: sign in, one-screen setup, workspace creation, changing a status and asking for a referral, analytics, jobs, LinkedIn outreach, agent drafts and dark mode](docs/demo.gif)
 
