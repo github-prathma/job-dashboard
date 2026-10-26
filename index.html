@@ -636,10 +636,10 @@ a.ref-person:hover { border-color: var(--s-referral); color: var(--s-referral); 
         </div>
         <label class="fld su-spons" hidden><span>Line for recruiters <em>edit if you like</em></span><input name="sponsorship" value="I'll need visa sponsorship."></label>
         <label class="drop" id="su-drop">
-          <input type="file" name="resumeFile" accept=".docx,.pdf,.txt,.doc,.rtf,.odt">
+          <input type="file" name="resumeFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
           <svg class="ic"><use href="#i-file"/></svg>
           <b id="su-file-name">Add your resume</b>
-          <small>Word (.docx) works best. PDF and text work too. You can also add it later.</small>
+          <small>Accepted formats: <b>PDF</b> or <b>Word (.docx)</b>, up to 5 MB. We'll format it to match the page count of your file. You can also add it later.</small>
         </label>
         <p class="hint su-later"><svg class="ic sm"><use href="#i-zap"/></svg>That's it. Your pitch, skills and highlights are filled in from your resume when the agents first run, and every setting can be changed later in your tracker.</p>
       </section>
@@ -652,6 +652,7 @@ a.ref-person:hover { border-color: var(--s-referral); color: var(--s-referral); 
         <div id="su-done" hidden>
           <div class="su-ok"><svg class="ic"><use href="#i-check"/></svg></div>
           <h1>Your workspace is ready</h1>
+          <p class="hint su-res"><span id="su-resume-note"></span> <a id="su-resume-link" target="_blank" rel="noopener">Open your base resume</a></p>
           <p class="lead">One last step turns on the agents that find jobs and tailor your resume twice a day. They run in Claude as a scheduled task, so you need a Claude account whose plan includes scheduled tasks.</p>
           <ol class="su-agent">
             <li>Open <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> and turn on the <b>Google Drive</b>, <b>Google Docs</b> and <b>Google Sheets</b> connectors (Settings → Connectors).</li>
@@ -1006,6 +1007,7 @@ a.ref-person:hover { border-color: var(--s-referral); color: var(--s-referral); 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="outreach.js"></script>
+<script src="resume.js"></script>
 <script src="setup.js"></script>
 <script src="app.js"></script>
 </body>

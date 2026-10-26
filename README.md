@@ -36,7 +36,7 @@ A personal dashboard for your job search. It shows the jobs your agents found, a
 No coding, no Google Cloud, no API keys.
 
 1. **Open the site** and click **Sign in with Google**. Use any Google account; Google asks you to let the app "see, edit, create and delete only the specific Google Drive files you use with this app". That's the narrowest Drive permission Google offers.
-2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, your target companies (pick them as tags), whether you need sponsorship, and your resume. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
+2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, your target companies (pick them as tags), whether you need sponsorship, and your resume (**PDF or Word .docx**). The app reads your resume's sections and rebuilds it as a cleanly formatted Google Doc with the same number of pages as your file, and keeps your original file next to it. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
 
    | In your **Referly** folder | What it's for |
    |---|---|
@@ -137,6 +137,7 @@ Neither the client ID nor the restricted API key is a secret: Google only accept
 | `index.html` | The page layout and styles |
 | `app.js` | Sign-in, loading data, charts, and the pages |
 | `setup.js` | The first-time setup wizard that creates your Drive workspace |
+| `resume.js` | Reads an uploaded PDF/.docx resume and rebuilds it in a clean, page-fitted format |
 | `config.js` | Site-wide settings: Google client ID and default limits |
 | `outreach.js` | How LinkedIn messages are written (your facts come from the Profile tab) |
 | `agent/agent-prompt.md` | Template for the agent instructions (the wizard fills it in for you) |

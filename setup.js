@@ -132,7 +132,7 @@ window.JD_SETUP = (() => {
 <h2>5. Companies to skip</h2>${li(list(a.skip).length ? list(a.skip) : ['[none yet]'])}
 <h2>6. Company watchlist (checked every run)</h2><p>Format: Company | ATS | board slug. "web search" means the agents search that company's careers site.</p>${li(watch.length ? watch.map((c) => `${c} | ${COMPANIES[c] || 'web search'}`) : ['[add companies you want checked every run]'])}
 <h2>7. Broader discovery</h2>${li(['Also search LinkedIn Jobs, Indeed and company career pages (Greenhouse, Ashby, Lever) for the titles above.'])}
-<h2>8. Resume tailoring rules</h2>${li(['Never invent skills, numbers or experience.', 'Reorder and reword bullets to use the job’s language only where it’s true.', 'Keep the same sections and length as the base resume.'])}
+<h2>8. Resume tailoring rules</h2>${li(['Never invent skills, numbers or experience.', 'Reorder and reword bullets to use the job’s language only where it’s true.', 'Keep the same sections and the same number of pages as the base resume. Copy the BASE RESUME doc (keeping its layout, fonts and margins) and edit the copy rather than rebuilding the format.'])}
 <h2>9. Outreach rules</h2>${li(['Up to 3 people per job: at most 1 recruiter, plus a hiring manager or engineer.', 'Recruiter titles: Technical Recruiter, Engineering Recruiter, Talent Partner (Engineering).', 'Don’t contact the same person again within 30 days.', 'People located in: [e.g. United States]', 'InMails per day: 5. After that, use connection notes (300 characters max).'] .concat(a.needSponsorship === 'yes' ? ['Work-authorization line for recruiters only: ' + a.sponsorship] : []))}
 <h3>Templates</h3>${li(['A – message to a 1st-degree connection asking for a referral: [write yours, or let the agents draft one]', 'B – InMail to a recruiter: [...]', 'C – InMail to a hiring manager or engineer: [...]', 'D – connection note (300 characters max): [...]'])}
 <h2>10. Application answers (for you to copy into forms)</h2>${li(['Need sponsorship: ' + (a.needSponsorship === 'yes' ? 'Yes' : 'No'), 'Willing to relocate: [...]', 'Earliest start date: [...]', 'Expected salary: [...]', 'Links: [LinkedIn, GitHub, portfolio]'])}
@@ -205,10 +205,19 @@ window.JD_SETUP = (() => {
         return f.id;
       });
       await task('Writing your search config', 'config', async () => (await upload({ name: 'SEARCH CONFIG (edit me)', mimeType: DOC, parents: [created.folder] }, new Blob([configHtml(a)], { type: 'text/html' }), 'text/html')).id);
-      await task(file ? 'Uploading your resume' : 'Creating your base resume', 'resume', async () => {
+      await task(file ? 'Formatting your resume' : 'Creating your base resume', 'resume', async () => {
         const meta = { name: `BASE RESUME - ${a.fullName}`, mimeType: DOC, parents: [created.folder] };
         if (file) {
           const ext = (file.name.split('.').pop() || '').toLowerCase();
+          // Keep the original as uploaded, then build a clean, consistently formatted copy as the base resume.
+          await upload({ name: `Original resume - ${a.fullName}.${ext}`, parents: [created.folder] }, file, file.type || MIME[ext] || 'application/octet-stream').catch(() => null);
+          let out = null;
+          try { out = await window.JD_RESUME.format(file); } catch (e) { out = null; }
+          if (out && out.formatted) {
+            created.resumeNote = `Formatted to ${out.pages} page${out.pages > 1 ? 's' : ''}, like your original. Your original file is saved next to it.`;
+            return (await upload(meta, out.blob, out.mime)).id;
+          }
+          created.resumeNote = 'We couldn\u2019t read the sections of your file, so it was imported as-is. Check its formatting in Google Docs.';
           return (await upload(meta, file, file.type || MIME[ext] || 'application/octet-stream')).id;
         }
         const body = text ? `<html><body>${text.split(/\n/).map((l) => `<p>${esc(l)}</p>`).join('')}</body></html>`
@@ -232,6 +241,8 @@ window.JD_SETUP = (() => {
     created.ws = { tracker: created.tracker, folder: created.folder, config: created.config, resume: created.resume, resumes: created.subs.resumes, outreach: created.subs.outreach, runlogs: created.subs.runlogs, profileGid: String(SHEET_IDS.Profile) };
     created.who = { fullName: a.fullName, firstName: a.firstName, tz: a.tz, morning: a.morning, evening: a.evening };
     $('su-progress').hidden = true; $('su-done').hidden = false; $('su-nav').hidden = true;
+    $('su-resume-note').textContent = created.resumeNote ? 'Resume: ' + created.resumeNote : '';
+    $('su-resume-link').href = `https://docs.google.com/document/d/${created.resume}/edit`;
     document.querySelectorAll('.su-times').forEach((s) => { s.textContent = `${a.morning} and ${a.evening}`; });
     document.querySelectorAll('#su-steps li').forEach((li) => { li.classList.remove('on'); li.classList.add('done'); });
   }
@@ -356,6 +367,13 @@ window.JD_SETUP = (() => {
     }));
     form().elements.resumeFile.addEventListener('change', () => {
       const f = form().elements.resumeFile.files[0];
+      const ext = f ? (f.name.split('.').pop() || '').toLowerCase() : '';
+      if (f && !['pdf', 'docx'].includes(ext)) {
+        form().elements.resumeFile.value = ''; $('su-drop').classList.remove('has');
+        $('su-file-name').textContent = 'Add your resume'; $('su-err').textContent = 'Please choose a PDF or Word (.docx) file. Older .doc files: open in Word and save as .docx.'; return;
+      }
+      if (f && f.size > 5 * 1024 * 1024) { form().elements.resumeFile.value = ''; $('su-err').textContent = 'That file is over 5 MB. Please choose a smaller PDF or .docx.'; return; }
+      $('su-err').textContent = '';
       $('su-file-name').textContent = f ? f.name : 'Add your resume';
       $('su-drop').classList.toggle('has', !!f);
     });
