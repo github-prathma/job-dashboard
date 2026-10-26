@@ -4,9 +4,9 @@
 
 **Try it:** https://github-prathma.github.io/job-dashboard/ (sign in with any Google account, or click **Or look around with sample data first**).
 
-![Demo: sign in, overview, analytics, jobs, LinkedIn outreach, agent drafts and the dark theme](docs/demo.gif)
+![Demo: sign in, one-screen setup, workspace creation, changing a status and asking for a referral, analytics, jobs, LinkedIn outreach, agent drafts and dark mode](docs/demo.gif)
 
-*A one-minute tour using sample data. [Watch the full-quality video (MP4)](docs/demo.mp4).*
+*A short tour with a made-up user: sign-up, setup, then a day on the dashboard. [Watch the full-quality video (MP4)](docs/demo.mp4).*
 
 A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
