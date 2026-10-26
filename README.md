@@ -10,7 +10,7 @@
 
 A personal dashboard for your job search. It shows the jobs your agents found, a tailored resume for each one, people to contact for a referral, and charts of how your search is going. It also helps you write LinkedIn messages.
 
-**Your data stays in your own Google Drive.** The website holds no data. The first time you sign in, it creates a **Referly** folder in your Drive with everything it needs. Google only lets the app open the files it created there; it can't see anything else in your Drive.
+**Your data stays in your own Google Drive.** The website holds no data. The first time you sign in, a one-screen setup creates a **Referly** folder in your Drive with everything it needs, including a cleanly formatted copy of your resume. Google only lets the app open the files it created there; it can't see anything else in your Drive.
 
 **Nothing is sent for you.** The dashboard and the agents prepare everything; you apply and send messages yourself.
 
@@ -31,32 +31,65 @@ A personal dashboard for your job search. It shows the jobs your agents found, a
 
 ---
 
-## Getting started (about 5 minutes)
+## Getting started (about 3 minutes)
 
-No coding, no Google Cloud, no API keys.
+No coding, no Google Cloud, no API keys. You need a Google account and your resume as a **PDF or Word (.docx)** file.
 
-1. **Open the site** and click **Sign in with Google**. Use any Google account; Google asks you to let the app "see, edit, create and delete only the specific Google Drive files you use with this app". That's the narrowest Drive permission Google offers.
-2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, your target companies (pick them as tags), whether you need sponsorship, and your resume (**PDF or Word .docx**). The app reads your resume's sections and rebuilds it as a cleanly formatted Google Doc with the same number of pages as your file, and keeps your original file next to it. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
+### 1. Sign in with Google
+Open the site and click **Sign in with Google**, then pick your account. Google asks you to let Referly *"see, edit, create and delete only the specific Google Drive files you use with this app"*. That's the narrowest Drive permission Google offers: the app can only open files it creates for you. Keep that box ticked and click **Continue**.
 
-   | In your **Referly** folder | What it's for |
-   |---|---|
-   | Job Application Tracker (Google Sheet) | Tabs: **Jobs** (one row per job), **Outreach** (drafted messages), **Runs** (one row per agent run), **Profile** (your details for messages) |
-   | SEARCH CONFIG (edit me) | Your rules for the agents: roles, locations, companies, templates |
-   | BASE RESUME | Your resume. Edit it any time; the agents always read the latest version |
-   | Tailored Resumes, Referral Outreach Drafts, Run Logs | Folders the agents fill |
+- Google may show **"Google hasn't verified this app"** the first time. Click **Advanced → Go to github-prathma.github.io**.
+- If the sign-in window stays blank or is blocked, click **Sign-in window blank or blocked? Sign in in this tab instead** under the button.
+- Just curious? Click **Or look around with sample data first** to explore without signing in.
 
-3. **Turn on the agents** (optional, but this is what finds jobs for you). They run in [Claude](https://claude.ai) as a scheduled task:
-   - In Claude, turn on the **Google Drive**, **Google Docs** and **Google Sheets** connectors.
-   - On the last setup screen (or later on **Files and runs**), click **Copy agent instructions**. They already contain your file IDs.
-   - In a new Claude chat, type *"Create a scheduled task that runs every day at 7:45 AM and 5:45 PM with these instructions:"* and paste.
+### 2. Fill in one short screen
+New accounts see a single setup form:
 
-   Without the agents, the dashboard still works: type jobs into the **Jobs** tab yourself.
+| Field | What to do |
+|---|---|
+| **Signed in as** | Shows the Google account in use. Wrong one? Click **Use a different account**. |
+| **First name / Full name** | Already filled in from Google. Use your name as it appears on your resume. |
+| **Roles you want** | Comma-separated, e.g. *Senior Software Engineer, Staff Software Engineer*. |
+| **Where** | Open the dropdown and tick one or more places (Remote US, Bay Area, Seattle, New York…). Add anything else under **Other**. |
+| **Need visa sponsorship?** | **No** or **Yes**. With Yes, you can edit the one line that's added to messages for recruiters only. |
+| **Target companies** | Optional. Type to search about 70 companies and click or press Enter to add each as a tag; type any other name and press Enter to add it. Remove a tag with ×. The agents check these companies' job boards every run. |
+| **Add your resume** | Upload a **PDF or Word (.docx)** file, up to 5 MB. Other formats (for example old .doc files) are rejected with a message. You can skip this and add it later. |
 
-**Coming back later** (any browser, any device): just sign in with the same Google account. The site finds the workspace it created and opens your dashboard straight away; setup only happens once per Google account. The setup screen shows which account you're signed in with, with a **Use a different account** link in case you picked the wrong one.
+Click **Create my workspace**.
 
-**Already have a tracker** (for example one your agents made before this site existed)? On the first screen choose **I already have a Job Application Tracker** and pick it from your Drive. Nothing is asked or changed except adding any missing tabs (Outreach, Runs, Profile).
+### 3. Referly builds your workspace
+You'll see each step tick off as it's created in your Google Drive:
 
-**To change your details later,** edit the **Profile** tab of your tracker (Files and runs → **Edit my profile**). Search rules live in the SEARCH CONFIG doc.
+```
+Referly/
+├── Job Application Tracker      Google Sheet: Jobs, Outreach, Runs and Profile tabs
+├── SEARCH CONFIG (edit me)      Your roles, locations, companies and rules for the agents
+├── BASE RESUME - <your name>    Your resume, cleanly formatted (see below)
+├── Original resume - <name>     The file you uploaded, untouched
+├── Tailored Resumes/            One folder per company, filled by the agents
+├── Referral Outreach Drafts/    Message drafts per job, filled by the agents
+└── Run Logs/                    One log per agent run
+```
+
+**About your resume:** Referly reads your file's sections (name, contact, summary, jobs with dates, bullets, skills, education and more) and rebuilds it as a Google Doc in a clean, consistent layout. It keeps the **same number of pages as your original** (a one-page resume stays one page), choosing the largest font and margins that fit. If your file's structure can't be read, it's imported as-is, and the last screen tells you to check it. Either way, edit the doc any time; the agents always read the latest version.
+
+Your pitch, skills and highlights for LinkedIn messages are filled in automatically from your resume when the agents first run.
+
+### 4. Turn on the agents (recommended)
+The agents find new jobs twice a day, tailor your resume for each and draft referral messages. They run in your own [Claude](https://claude.ai) account as a scheduled task:
+
+1. In Claude, open **Settings → Connectors** and turn on **Google Drive**, **Google Docs** and **Google Sheets**, signed in with the same Google account.
+2. On the last setup screen, click **Copy agent instructions**. They already include your file IDs. You can copy them again any time from **Files and runs**.
+3. In a new Claude chat, type *"Create a scheduled task that runs every day at 7:45 AM and 5:45 PM with these instructions:"* and paste.
+
+Then click **Open my dashboard**. Without the agents, the dashboard still works: add jobs to the **Jobs** tab yourself.
+
+### Coming back later
+Sign in with the same Google account on any browser or device and you go straight to your dashboard; setup only happens once per account. If you ever see the setup form again, you're probably signed in with a different Google account; use **Use a different account**.
+
+**To change your details,** edit the **Profile** tab of your tracker (Files and runs → **Edit my profile**). Search rules live in the **SEARCH CONFIG** doc; your resume in **BASE RESUME**.
+
+**Already have a tracker made outside Referly?** If the site owner has turned on Google Picker (see hosting step 5), the first screen offers **I already have a Job Application Tracker**: pick it from your Drive and any missing tabs are added. Otherwise, set up a new workspace and copy your rows into its tracker.
 
 ---
 
@@ -99,7 +132,13 @@ It only reads the profile you're looking at, and only when you click it. It work
 The person who hosts the site hasn't finished the one-time Google Cloud setup below (the app must be **In production** and ask only for the `drive.file` permission).
 
 **I signed in and see the setup questions again.**
-You're signed in with a different Google account than the one you set up with, or the tracker was deleted. Each Google account gets its own workspace.
+You're signed in with a different Google account than the one you set up with, or the tracker was deleted. Each Google account gets its own workspace. Use **Use a different account** on the setup screen.
+
+**The Google sign-in window is blank.**
+An extension or blocked pop-up is usually the cause. Click **Sign in in this tab instead** under the sign-in button.
+
+**My resume looks wrong after setup.**
+Open **BASE RESUME** and fix it in Google Docs; the agents use whatever is there. Your original upload is saved next to it.
 
 **My changes don't show up.**
 The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**. After a code change, GitHub Pages takes about a minute; then hard-refresh (Cmd+Shift+R or Ctrl+Shift+R).
