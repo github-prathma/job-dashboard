@@ -27,8 +27,6 @@ A personal dashboard for your job search. It shows the jobs your agents found, a
  4. Log the run                  ──►   Runs tab + Run Logs/               ──►   Files and runs page
 ```
 
-
-
 ---
 
 ## Getting started (about 3 minutes)
@@ -89,8 +87,6 @@ Sign in with the same Google account on any browser or device and you go straigh
 
 **To change your details,** edit the **Profile** tab of your tracker (Files and runs → **Edit my profile**). Search rules live in the **SEARCH CONFIG** doc; your resume in **BASE RESUME**.
 
-**Already have a tracker made outside Referly?** If the site owner has turned on Google Picker (see hosting step 5), the first screen offers **I already have a Job Application Tracker**: pick it from your Drive and any missing tabs are added. Otherwise, set up a new workspace and copy your rows into its tracker.
-
 ---
 
 ## Using the dashboard every day
@@ -128,8 +124,8 @@ It only reads the profile you're looking at, and only when you click it. It work
 
 ## Common questions
 
-**Google says "This app isn't verified" or "Access blocked".**
-The person who hosts the site hasn't finished the one-time Google Cloud setup below (the app must be **In production** and ask only for the `drive.file` permission).
+**Google says "Google hasn't verified this app".**
+That's expected for Referly. Click **Advanced → Go to github-prathma.github.io** to continue. If Google says **Access blocked**, sign-ups may be paused; try again later.
 
 **I signed in and see the setup questions again.**
 You're signed in with a different Google account than the one you set up with, or the tracker was deleted. Each Google account gets its own workspace. Use **Use a different account** on the setup screen.
@@ -141,45 +137,10 @@ An extension or blocked pop-up is usually the cause. Click **Sign in in this tab
 Open **BASE RESUME** and fix it in Google Docs; the agents use whatever is there. Your original upload is saved next to it.
 
 **My changes don't show up.**
-The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**. After a code change, GitHub Pages takes about a minute; then hard-refresh (Cmd+Shift+R or Ctrl+Shift+R).
+The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**. If the page itself looks out of date, hard-refresh it (Cmd+Shift+R or Ctrl+Shift+R).
 
 **What's saved in my browser?**
 Only small conveniences: your light/dark choice, which drafts you marked sent, your sent-message log, and the job you picked last. Clearing site data resets them. Your sign-in lasts about an hour.
 
 **Is my data public?**
-No. The website code is public, but it holds no data. Your files are private in your own Drive.
-
----
-
-## Hosting your own copy (only for the person who runs the site)
-
-Everyone else can skip this. You do it once, and then anyone can sign in.
-
-1. **Fork** this repo, then **Settings → Pages**: Deploy from a branch, **main**, **/ (root)**. Your site is `https://<your-github-username>.github.io/job-dashboard/`.
-2. In https://console.cloud.google.com create a project, then **APIs & Services → Library**: enable **Google Drive API** and **Google Sheets API**.
-3. **Google Auth Platform**:
-   - **Branding**: app name (e.g. "Referly"), support email, and your site address as the home page.
-   - **Audience**: user type **External**, then click **Publish app** so the status is **In production**. No test users needed.
-   - **Data access**: add only `https://www.googleapis.com/auth/drive.file`. Google treats it as non-sensitive, so the app doesn't need Google's review.
-   - **Clients → Create client**: type **Web application**, Authorized JavaScript origins `https://<your-github-username>.github.io` (no path, no trailing slash). Under **Authorized redirect URIs** add your full site address with the trailing slash, `https://<your-github-username>.github.io/job-dashboard/` (used by "Sign in in this tab" when a browser blocks Google's sign-in window).
-4. Put the client ID in `config.js` → `GOOGLE_CLIENT_ID`.
-5. Optional (skip it if you like; new users never need it). For **I already have a tracker**: in **APIs & Services → Library** enable **Google Picker API**, then **Credentials → Create credentials → API key**. Restrict it to **Websites** `https://<your-github-username>.github.io/*` and to the **Google Picker API**, and put it in `config.js` → `GOOGLE_API_KEY`.
-6. Commit.
-
-Neither the client ID nor the restricted API key is a secret: Google only accepts it from the site address you listed.
-
----
-
-## Files in this repo
-| File | What it is |
-|---|---|
-| `index.html` | The page layout and styles |
-| `app.js` | Sign-in, loading data, charts, and the pages |
-| `setup.js` | The first-time setup wizard that creates your Drive workspace |
-| `resume.js` | Reads an uploaded PDF/.docx resume and rebuilds it in a clean, page-fitted format |
-| `config.js` | Site-wide settings: Google client ID and default limits |
-| `outreach.js` | How LinkedIn messages are written (your facts come from the Profile tab) |
-| `agent/agent-prompt.md` | Template for the agent instructions (the wizard fills it in for you) |
-| `agent/search-config-template.md` | What the SEARCH CONFIG doc covers |
-| `docs/demo.gif`, `docs/demo.mp4` | The demo shown at the top of this page |
-| `assets/` | Logo, browser-tab icons, and `logo-120.png` for Google's sign-in branding |
+No. Referly has no server or database; your files stay private in your own Google Drive.
