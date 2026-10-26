@@ -36,7 +36,7 @@ A personal dashboard for your job search. It shows the jobs your agents found, a
 No coding, no Google Cloud, no API keys.
 
 1. **Open the site** and click **Sign in with Google**. Use any Google account; Google asks you to let the app "see, edit, create and delete only the specific Google Drive files you use with this app". That's the narrowest Drive permission Google offers.
-2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, whether you need sponsorship, and your resume. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
+2. **Fill in one short screen**: your name (already filled in from Google), the roles you want, where, your target companies (pick them as tags), whether you need sponsorship, and your resume. The app then creates this in your Drive (your pitch, skills and highlights for messages are filled in from your resume when the agents first run):
 
    | In your **Referly** folder | What it's for |
    |---|---|
@@ -64,7 +64,7 @@ No coding, no Google Cloud, no API keys.
 
 | Page | What you do there |
 |---|---|
-| **Overview** | See today's numbers and **Next up**: the best jobs to apply to now, with buttons for Apply, Resume, Outreach and Connections. |
+| **Overview** | Today's numbers, **Next up** (the best jobs to apply to now) and **Referral follow-ups** (who you asked, with LinkedIn links). |
 | **Analytics** | Charts: your funnel (prepared → applied → interviewing → offer), jobs per day, match scores, top companies, sources. |
 | **All jobs** | Search and filter every job. Each row has Apply, Resume, Folder and People buttons. |
 | **LinkedIn outreach** | Write a message: enter the person, company and job, pick **InMail**, **Connection note** (300 characters max) or **Message**, then click **Draft messages**. Paste the job link (Greenhouse, Lever or Ashby) and the drafts mention skills from that job that are also in your resume. |
@@ -73,7 +73,7 @@ No coding, no Google Cloud, no API keys.
 
 **Light or dark?** Use the sun / screen / moon switch at the bottom of the sidebar (or top-right of the sign-in page). The screen icon follows your device setting.
 
-**To update a job's status,** change the Status column in the **Jobs** tab of your tracker. The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**.
+**To update a job's status,** pick it from the status menu on any job (Next up, All jobs or Referral follow-ups). It's saved straight to your tracker in Drive. Statuses: Ready to apply, Applied, Referral requested, Interviewing, Offer, On hold, Rejected, Skipped. Choosing **Referral requested** asks who you asked (from the agents' drafts for that job, or anyone you add with their LinkedIn link); they then appear under **Referral follow-ups** on the Overview with their profiles and a "follow up" nudge after 5 days. You can still edit the sheet directly. The dashboard refreshes every 5 minutes, when you come back to the tab, or when you click **Refresh**.
 
 ### Finding people to ask for referrals
 Every job has **Find people** buttons that open LinkedIn's own search in your browser, filtered to people **currently at that company** and **in the US**:
