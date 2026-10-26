@@ -23,7 +23,7 @@
   --side: #1e2a78; --side-2: rgba(255,255,255,.12); --side-grad: linear-gradient(180deg, #1e3a8a 0%, #3b2a8f 55%, #5b21b6 100%); --side-text: #dbe3ff; --side-muted: #a7b3dd;
   --brand: #4f46e5; --brand-2: #06b6d4; --accent: #ec4899;
   --glow-1: rgba(99,102,241,.22); --glow-2: rgba(6,182,212,.18); --glow-3: rgba(236,72,153,.12);
-  --s-ready: #f59e0b; --s-applied: #0ea5e9; --s-referral: #8b5cf6; --s-interview: #4f46e5; --s-offer: #10b981; --s-rejected: #f43f5e; --s-skipped: #94a3b8;
+  --s-ready: #f59e0b; --s-applied: #0ea5e9; --s-referral: #8b5cf6; --s-interview: #4f46e5; --s-offer: #10b981; --s-rejected: #f43f5e; --s-skipped: #94a3b8; --s-hold: #d946ef;
   --good: #059669; --warn: #d97706; --bad: #e11d48;
   --r-lg: 16px; --r-md: 12px; --r-sm: 8px;
   --shadow: 0 1px 2px rgba(30, 41, 99, .06), 0 10px 28px -14px rgba(30, 41, 99, .22);
@@ -394,6 +394,17 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
 .ms-opt input { width: 16px; height: 16px; accent-color: var(--brand); margin: 0; }
 .ms-other { display: grid; gap: 4px; padding: 8px 10px 6px; border-top: 1px solid var(--line); margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .ms-other input { font: inherit; font-size: 14px; font-weight: 500; color: var(--text); background: var(--canvas); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.co-box { position: relative; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 42px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); cursor: text; }
+.tags:focus-within { border-color: var(--brand); outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.tags input { all: unset; flex: 1; min-width: 140px; font-size: 14px; color: var(--text); padding: 3px 4px; }
+.tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: color-mix(in srgb, var(--brand) 14%, var(--panel)); color: color-mix(in srgb, var(--brand) 75%, var(--ink)); }
+.tag button { all: unset; cursor: pointer; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; line-height: 1; }
+.tag button:hover { background: color-mix(in srgb, var(--brand) 25%, transparent); }
+.co-sug { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px); padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); display: flex; flex-wrap: wrap; gap: 6px; }
+.co-opt { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--line); color: var(--text); }
+.co-opt:hover { border-color: var(--brand); color: var(--brand); }
+.co-opt.add { border-style: dashed; color: var(--brand); }
 .setup-nav { display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
 .setup-nav .grow { flex: 1; }
 .su-tree, .su-tree ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -418,6 +429,43 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
   .setup-art { position: static; height: auto; padding: 24px; } .setup-art .steps { display: none; }
   .setup-main { padding: 16px; } .setup-card { padding: 22px 18px; } .f3 { grid-template-columns: 1fr 1fr; }
 }
+
+/* Status editing */
+.status-select { font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 4px 26px 4px 10px; appearance: none; -webkit-appearance: none;
+  border: 1px solid color-mix(in srgb, var(--sc) 45%, var(--line)); background: color-mix(in srgb, var(--sc) 13%, var(--panel)) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center;
+  color: color-mix(in srgb, var(--sc) 80%, var(--ink)); max-width: 170px; }
+.status-select:disabled { opacity: .6; cursor: progress; }
+.q-status { margin-top: 6px; }
+.ref-line { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--muted); align-items: center; }
+.ref-line a { color: var(--s-referral); font-weight: 700; text-decoration: none; }
+.ref-line a:hover { text-decoration: underline; }
+.refs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.ref { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; display: grid; gap: 8px; background: color-mix(in srgb, var(--s-referral) 5%, var(--panel)); }
+.ref-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.ref-head b { color: var(--ink); display: block; }
+.ref-head small { color: var(--muted); font-size: 12px; }
+.ref-age { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--grid); color: var(--muted); }
+.ref-age.due { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.ref-people { display: flex; flex-wrap: wrap; gap: 6px; }
+.ref-person { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-decoration: none; border: 1px solid color-mix(in srgb, var(--s-referral) 40%, var(--line)); color: var(--ink); background: var(--panel); }
+a.ref-person:hover { border-color: var(--s-referral); color: var(--s-referral); }
+.modal { border: 1px solid var(--line); border-radius: 18px; padding: 0; width: min(560px, calc(100vw - 32px)); background: var(--panel); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0,0,0,.5); }
+.modal::backdrop { background: rgba(10, 14, 40, .55); backdrop-filter: blur(2px); }
+.modal form { padding: 22px; display: grid; gap: 12px; }
+.modal h2 { margin: 0; font-size: 19px; color: var(--ink); }
+.modal .hint { margin: -6px 0 0; color: var(--muted); font-size: 13px; }
+.ref-pick { display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.ref-opt { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.ref-opt:has(input:checked) { border-color: var(--s-referral); background: color-mix(in srgb, var(--s-referral) 8%, var(--panel)); }
+.ref-opt input { width: 16px; height: 16px; accent-color: var(--s-referral); margin: 0; }
+.ref-opt b { display: block; color: var(--ink); font-size: 14px; }
+.ref-opt small { color: var(--muted); font-size: 12px; }
+.ref-sub { margin: 4px 0 -4px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.modal #ref-add { justify-self: start; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; background: var(--ink); color: var(--panel); box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+.toast.bad { background: var(--bad); color: #fff; }
+#refresh.spin .ic { animation: spin .8s linear infinite; }
 
 /* Responsive */
 @media (max-width: 1200px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .row.c { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row.b { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -580,6 +628,12 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
             </div>
           </fieldset>
         </div>
+        <div class="fld"><span id="su-co-label">Target companies <em>optional, pick as many as you like</em></span>
+          <div class="co-box">
+            <div class="tags" id="su-co"><input id="su-co-input" aria-labelledby="su-co-label" autocomplete="off" placeholder="Type a company, e.g. Stripe"></div>
+            <div class="co-sug" id="su-co-sug" hidden></div>
+          </div>
+        </div>
         <label class="fld su-spons" hidden><span>Line for recruiters <em>edit if you like</em></span><input name="sponsorship" value="I'll need visa sponsorship."></label>
         <label class="drop" id="su-drop">
           <input type="file" name="resumeFile" accept=".docx,.pdf,.txt,.doc,.rtf,.odt">
@@ -657,7 +711,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
       </div>
       <div class="top-actions">
         <span class="updated" id="updated"></span>
-        <a class="btn" data-link="tracker" target="_blank" rel="noopener" style="--b: var(--s-offer)"><svg class="ic sm"><use href="#i-sheet"/></svg>Update statuses</a>
+        <a class="btn" data-link="tracker" target="_blank" rel="noopener" style="--b: var(--s-offer)"><svg class="ic sm"><use href="#i-sheet"/></svg>Open tracker</a>
         <button class="btn primary" id="refresh" type="button"><svg class="ic sm"><use href="#i-refresh"/></svg>Refresh</button>
       </div>
     </div>
@@ -712,6 +766,13 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
       </div>
     </section>
 
+    <section class="w" id="ref-card">
+      <div class="w-head">
+        <div class="w-title"><span class="kpi-icon" style="--k: var(--s-referral)"><svg class="ic"><use href="#i-users"/></svg></span><div><h2>Referral follow-ups</h2><p class="hint">People you asked for a referral. Nudge anyone you haven't heard from in 5 days.</p></div></div>
+      </div>
+      <div class="refs" id="refs"></div>
+    </section>
+
     </div>
 
     <div class="page" data-page="analytics" hidden>
@@ -756,7 +817,7 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
     <section class="w" id="jobs">
       <div class="w-head">
         <div class="w-title"><span class="kpi-icon" style="--k: var(--brand)"><svg class="ic"><use href="#i-list"/></svg></span><div><h2>All jobs</h2><p class="hint" id="jobs-count">Every job the agents prepared</p></div></div>
-        <a class="btn sm" data-link="tracker" target="_blank" rel="noopener" style="--b: var(--s-offer)"><svg class="ic sm"><use href="#i-sheet"/></svg>Change a status</a>
+        <a class="btn sm" data-link="tracker" target="_blank" rel="noopener" style="--b: var(--s-offer)"><svg class="ic sm"><use href="#i-sheet"/></svg>Open tracker</a>
       </div>
       <div class="tools">
         <label class="search"><svg class="ic sm"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search company, role, location" aria-label="Search jobs"></label>
@@ -923,6 +984,26 @@ fieldset.fld legend { padding: 0; margin-bottom: 6px; }
     </div>
   </main>
 </div>
+
+<dialog class="modal" id="ref-dialog">
+  <form method="dialog" id="ref-form">
+    <h2>Who did you ask for a referral?</h2>
+    <p class="hint" id="ref-job"></p>
+    <div class="ref-pick" id="ref-pick"></div>
+    <p class="ref-sub">Someone else</p>
+    <div class="f2">
+      <label class="fld"><span>Name</span><input id="ref-name" placeholder="e.g. Priya Shah" autocomplete="off"></label>
+      <label class="fld"><span>LinkedIn profile <em>optional</em></span><input id="ref-url" placeholder="https://www.linkedin.com/in/..." autocomplete="off"></label>
+    </div>
+    <button class="btn sm" type="button" id="ref-add"><svg class="ic sm"><use href="#i-user-plus"/></svg>Add</button>
+    <div class="form-err" id="ref-err"></div>
+    <div class="modal-actions">
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+      <button class="btn primary" value="save" type="submit" id="ref-save"><svg class="ic sm"><use href="#i-check"/></svg>Save</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="outreach.js"></script>
 <script src="setup.js"></script>

@@ -7,18 +7,37 @@ window.JD_SETUP = (() => {
   const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id';
   const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets/';
   const FOLDER = 'application/vnd.google-apps.folder';
-  const STATUSES = ['Ready to apply', 'Applied', 'Referral requested', 'Interviewing', 'Offer', 'Rejected', 'Skipped'];
+  const STATUSES = ['Ready to apply', 'Applied', 'Referral requested', 'Interviewing', 'Offer', 'On hold', 'Rejected', 'Skipped'];
   const HEADERS = {
-    Jobs: ['Date Found', 'Company', 'Job Title', 'Location', 'Job Link', 'Source', 'Posted At', 'Match Score', 'Sponsorship Signal', 'H-1B History', 'Tailored Resume Link', 'Company Folder', 'Outreach Drafts Link', 'Status', 'Date Applied', 'Missing Keywords / Notes'],
+    Jobs: ['Date Found', 'Company', 'Job Title', 'Location', 'Job Link', 'Source', 'Posted At', 'Match Score', 'Sponsorship Signal', 'H-1B History', 'Tailored Resume Link', 'Company Folder', 'Outreach Drafts Link', 'Status', 'Date Applied', 'Missing Keywords / Notes', 'Referral Contacts', 'Referral Requested On'],
     Outreach: ['Date Drafted', 'Company', 'Job Title', 'Job Link', 'Person', 'Person Title', 'Relationship', 'Found Via', 'Profile URL', 'Message Type', 'Subject', 'Message', 'Draft ID'],
     Runs: ['Run Time', 'Window', 'Found', 'Prepared', 'InMails Drafted Today', 'Log Link', 'Notes'],
     Profile: ['Field', 'Value', 'Short version', 'Area', 'Keywords', 'How to edit'],
   };
   const SHEET_IDS = { Outreach: 2001, Runs: 2002, Profile: 2003 };
+  // Target companies offered as tags. Known job boards let the agents read openings directly.
+  const COMPANIES = {
+    'Stripe': 'greenhouse | stripe', 'Databricks': 'greenhouse | databricks', 'Robinhood': 'greenhouse | robinhood', 'Coinbase': 'greenhouse | coinbase',
+    'Affirm': 'greenhouse | affirm', 'Airbnb': 'greenhouse | airbnb', 'Instacart': 'greenhouse | instacart', 'Figma': 'greenhouse | figma',
+    'Anthropic': 'greenhouse | anthropic', 'Gusto': 'greenhouse | gusto', 'Chime': 'greenhouse | chime', 'Brex': 'greenhouse | brex',
+    'Adyen': 'greenhouse | adyen', 'Pinterest': 'greenhouse | pinterest', 'Lyft': 'greenhouse | lyft', 'Reddit': 'greenhouse | reddit',
+    'Dropbox': 'greenhouse | dropbox', 'Discord': 'greenhouse | discord', 'Roblox': 'greenhouse | roblox', 'Twilio': 'greenhouse | twilio',
+    'Samsara': 'greenhouse | samsara', 'Okta': 'greenhouse | okta', 'Datadog': 'greenhouse | datadog', 'MongoDB': 'greenhouse | mongodb',
+    'Elastic': 'greenhouse | elastic', 'Cloudflare': 'greenhouse | cloudflare', 'Toast': 'greenhouse | toast', 'Marqeta': 'greenhouse | marqeta',
+    'SoFi': 'greenhouse | sofi', 'Carta': 'greenhouse | carta', 'Scale AI': 'greenhouse | scaleai',
+    'Ramp': 'ashby | ramp', 'OpenAI': 'ashby | openai', 'Notion': 'ashby | notion', 'Plaid': 'ashby | plaid', 'Mercury': 'ashby | mercury',
+    'Deel': 'ashby | deel', 'Rippling': 'ashby | rippling', 'Linear': 'ashby | linear', 'Vercel': 'ashby | vercel', 'Replit': 'ashby | replit',
+    'Perplexity': 'ashby | perplexity', 'Palantir': 'lever | palantir', 'Netflix': 'web search', 'Google': 'web search', 'Meta': 'web search',
+    'Apple': 'web search', 'Microsoft': 'web search', 'Amazon': 'amazon.jobs', 'NVIDIA': 'web search', 'Salesforce': 'web search',
+    'Uber': 'web search', 'LinkedIn': 'web search', 'Snowflake': 'web search', 'DoorDash': 'web search', 'Block': 'web search',
+    'PayPal': 'web search', 'Visa': 'web search', 'Mastercard': 'web search', 'Capital One': 'web search', 'Intuit': 'web search',
+    'Adobe': 'web search', 'Oracle': 'web search', 'Cisco': 'web search', 'Walmart': 'web search', 'Workday': 'web search',
+    'ServiceNow': 'web search', 'Atlassian': 'web search', 'Shopify': 'web search', 'Spotify': 'web search', 'GEICO': 'web search',
+  };
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const list = (t) => String(t || '').split(',').map((x) => x.trim()).filter(Boolean);
 
-  let ctx = null, step = 1, created = {}, retry = false;
+  let ctx = null, step = 1, created = {}, retry = false, tags = [];
   const form = () => $('su-form');
   const val = (n) => { const e = form().elements[n]; return e ? String(e.value || '').trim() : ''; };
 
@@ -49,6 +68,21 @@ window.JD_SETUP = (() => {
     if (!bad && !val('locations')) { $('su-err').textContent = 'Pick at least one place you want to work.'; $('su-where').open = true; return false; }
     if (bad) { $('su-err').textContent = 'Please fill in the highlighted field.'; bad.focus(); return false; }
     return true;
+  }
+
+  function drawTags() {
+    const box = $('su-co'); box.querySelectorAll('.tag').forEach((t) => t.remove());
+    for (const c of tags) {
+      const t = document.createElement('span'); t.className = 'tag'; t.textContent = c;
+      const x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'Remove ' + c); x.textContent = '×';
+      x.addEventListener('click', () => { tags = tags.filter((y) => y !== c); drawTags(); });
+      t.append(x); box.insertBefore(t, $('su-co-input'));
+    }
+    $('su-co-input').placeholder = tags.length ? 'Add more…' : 'Type a company, e.g. Stripe';
+  }
+  function addTag(c) {
+    c = String(c || '').trim(); if (!c || tags.some((t) => t.toLowerCase() === c.toLowerCase())) return;
+    tags.push(c); drawTags(); $('su-co-input').value = ''; $('su-co-sug').hidden = true; $('su-co-input').focus();
   }
 
   // ---------- Google calls ----------
@@ -96,7 +130,7 @@ window.JD_SETUP = (() => {
       : ['Needs visa sponsorship: No'])}
 <h2>4. Freshness and volume</h2>${li(['Only postings since the previous run (at most the last 16 hours).', `At most ${a.dailyLimit} jobs a day; minimum match score 75.`, 'Diversity: at most 2 jobs per company a day.'])}
 <h2>5. Companies to skip</h2>${li(list(a.skip).length ? list(a.skip) : ['[none yet]'])}
-<h2>6. Watchlist (checked every run)</h2>${li(watch.length ? watch.map((c) => `${c}: [the agents find its job board]`) : ['[add companies you want checked every run]'])}
+<h2>6. Company watchlist (checked every run)</h2><p>Format: Company | ATS | board slug. "web search" means the agents search that company's careers site.</p>${li(watch.length ? watch.map((c) => `${c} | ${COMPANIES[c] || 'web search'}`) : ['[add companies you want checked every run]'])}
 <h2>7. Broader discovery</h2>${li(['Also search LinkedIn Jobs, Indeed and company career pages (Greenhouse, Ashby, Lever) for the titles above.'])}
 <h2>8. Resume tailoring rules</h2>${li(['Never invent skills, numbers or experience.', 'Reorder and reword bullets to use the job’s language only where it’s true.', 'Keep the same sections and length as the base resume.'])}
 <h2>9. Outreach rules</h2>${li(['Up to 3 people per job: at most 1 recruiter, plus a hiring manager or engineer.', 'Recruiter titles: Technical Recruiter, Engineering Recruiter, Talent Partner (Engineering).', 'Don’t contact the same person again within 30 days.', 'People located in: [e.g. United States]', 'InMails per day: 5. After that, use connection notes (300 characters max).'] .concat(a.needSponsorship === 'yes' ? ['Work-authorization line for recruiters only: ' + a.sponsorship] : []))}
@@ -113,7 +147,7 @@ window.JD_SETUP = (() => {
       pitch: 'a ' + (list(roles)[0] || 'software engineer'),
       needSponsorship: form().querySelector('[name=needSponsorship]:checked').value,
       sponsorship: val('sponsorship') || "I'll need visa sponsorship.",
-      roles, locations: val('locations'), watchlist: '', skip: '',
+      roles, locations: val('locations'), watchlist: tags.join(', '), skip: '',
       dailyLimit: (window.JD_CONFIG || {}).DAILY_LIMIT || 10, morning: '7:45 AM', evening: '5:45 PM', tz: ctx.tz,
     };
     const file = form().elements.resumeFile.files[0], text = '';
@@ -291,6 +325,22 @@ window.JD_SETUP = (() => {
     $('su-back').addEventListener('click', () => { if (step >= 1) show(step - 1); });
     $('su-new').addEventListener('click', () => show(1));
     $('su-connect').addEventListener('click', connectExisting);
+    // Target companies: type to filter, click or Enter to add, x to remove.
+    const inp = $('su-co-input'), sug = $('su-co-sug');
+    const showSug = () => {
+      const q = inp.value.trim().toLowerCase();
+      const hits = Object.keys(COMPANIES).filter((c) => !tags.includes(c) && (!q || c.toLowerCase().includes(q))).slice(0, 8);
+      sug.replaceChildren();
+      for (const c of hits) { const b = document.createElement('button'); b.type = 'button'; b.className = 'co-opt'; b.textContent = c; b.addEventListener('mousedown', (e) => { e.preventDefault(); addTag(c); }); sug.append(b); }
+      if (q && !Object.keys(COMPANIES).some((c) => c.toLowerCase() === q)) { const b = document.createElement('button'); b.type = 'button'; b.className = 'co-opt add'; b.textContent = `Add "${inp.value.trim()}"`; b.addEventListener('mousedown', (e) => { e.preventDefault(); addTag(inp.value.trim()); }); sug.append(b); }
+      sug.hidden = !sug.children.length || document.activeElement !== inp;
+    };
+    inp.addEventListener('input', showSug); inp.addEventListener('focus', showSug); inp.addEventListener('blur', () => { sug.hidden = true; });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); const first = sug.querySelector('.co-opt'); const v = inp.value.trim(); if (v) addTag(Object.keys(COMPANIES).find((c) => c.toLowerCase() === v.toLowerCase()) || (first && !first.classList.contains('add') ? first.textContent : v)); }
+      else if (e.key === 'Backspace' && !inp.value && tags.length) { tags.pop(); drawTags(); }
+    });
+    $('su-co').addEventListener('click', (e) => { if (e.target === $('su-co')) inp.focus(); });
     // "Where" multi-select: keep the hidden field and the summary text in sync.
     const syncWhere = () => {
       const picked = [...$('su-where').querySelectorAll('.ms-opt input:checked')].map((i) => i.value).concat(list($('su-where-other').value));
@@ -317,7 +367,7 @@ window.JD_SETUP = (() => {
     ctx = c; created = {};
     wire();
     $('setup').hidden = false;
-    retry = false;
+    retry = false; tags = []; drawTags();
     $('su-progress').hidden = true; $('su-done').hidden = true;
     $('su-connect-note').textContent = '';
     // Prefill from the Google account so most people only add a resume.

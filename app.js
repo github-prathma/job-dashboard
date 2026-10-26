@@ -41,8 +41,8 @@
   const pct = d3.format('.0%');
   const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
-  const STATUSES = ['Ready to apply', 'Applied', 'Referral requested', 'Interviewing', 'Offer', 'Rejected', 'Skipped'];
-  const SVAR = { 'Ready to apply': '--s-ready', 'Applied': '--s-applied', 'Referral requested': '--s-referral', 'Interviewing': '--s-interview', 'Offer': '--s-offer', 'Rejected': '--s-rejected', 'Skipped': '--s-skipped' };
+  const STATUSES = ['Ready to apply', 'Applied', 'Referral requested', 'Interviewing', 'Offer', 'On hold', 'Rejected', 'Skipped'];
+  const SVAR = { 'Ready to apply': '--s-ready', 'Applied': '--s-applied', 'Referral requested': '--s-referral', 'Interviewing': '--s-interview', 'Offer': '--s-offer', 'On hold': '--s-hold', 'Rejected': '--s-rejected', 'Skipped': '--s-skipped' };
   const sColor = (s) => `var(${SVAR[s] || '--s-skipped'})`;
   const AVATAR = ['#2563eb', '#0ea5e9', '#8b5cf6', '#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#14b8a6', '#6366f1', '#ec4899'];
   const PALETTE = ['--brand', '--s-referral', '--s-offer', '--s-ready', '--s-rejected', '--brand-2', '--s-interview', '--s-applied'];
@@ -218,7 +218,7 @@
     try {
       const tab = (range) => api(SHEETS + WS.tracker + '/values/' + encodeURIComponent(range));
       const [sheet, runTab, outreach, profile] = await Promise.all([
-        tab(`'${WS.jobsTab || 'Jobs'}'!A1:P1000`),
+        tab(`'${WS.jobsTab || 'Jobs'}'!A1:R1000`),
         tab("'Runs'!A1:G500").catch(() => ({ values: [] })),
         tab("'Outreach'!A1:M2000").catch(() => ({ values: [] })),
         tab("'Profile'!A1:E80").catch(() => ({ values: [] })),
@@ -229,7 +229,10 @@
       const draftRows = toRows(outreach.values || []);
       const values = sheet.values || [];
       const cols = values[0] || [];
-      const rows = values.slice(1).filter((r) => r.some((c) => String(c ?? '').trim() !== '')).map((r) => Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])));
+      // __row is the sheet row number, so status changes can be written back to the right row.
+      const rows = values.slice(1).map((r, i) => ({ r, row: i + 2 })).filter(({ r }) => r.some((c) => String(c ?? '').trim() !== ''))
+        .map(({ r, row }) => Object.assign(Object.fromEntries(cols.map((c, i) => [c, r[i] ?? ''])), { __row: row }));
+      if (cols.length && !cols.includes('Referral Contacts')) addReferralColumns().catch(() => { /* optional upgrade */ });
       const runRows = toRows(runTab.values || []).reverse().slice(0, 8);
       realData = { jobs: rows, drafts: draftRows, runs: runRows.map((x) => ({ title: 'Run ' + String(x['Run Time'] || '').replace(/^'/, ''), created: '', link: safeUrl(x['Log Link']) || '', found: x['Found'], prepared: x['Prepared'], notes: x['Notes'] })) };
       if (!usingSample || rows.length) { usingSample = false; jobs = realData.jobs; runs = realData.runs; drafts = realData.drafts; }
@@ -243,6 +246,133 @@
       return e;
     }
   }
+  // Older trackers: add the two referral columns and the "On hold" status to the dropdown, once.
+  async function addReferralColumns() {
+    const tabName = WS.jobsTab || 'Jobs';
+    await api(SHEETS + WS.tracker + '/values/' + encodeURIComponent(`'${tabName}'!Q1:R1`) + '?valueInputOption=RAW', { method: 'PUT', json: { values: [['Referral Contacts', 'Referral Requested On']] } });
+    const meta = await api(SHEETS + WS.tracker + '?fields=sheets.properties(sheetId,title)');
+    const sh = (meta.sheets || []).map((x) => x.properties).find((x) => x.title === tabName);
+    if (sh) await api(SHEETS + WS.tracker + ':batchUpdate', { json: { requests: [
+      { setDataValidation: { range: { sheetId: sh.sheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 13, endColumnIndex: 14 },
+        rule: { condition: { type: 'ONE_OF_LIST', values: STATUSES.map((v) => ({ userEnteredValue: v })) }, showCustomUi: true, strict: false } } },
+      { repeatCell: { range: { sheetId: sh.sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 16, endColumnIndex: 18 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: 'userEnteredFormat.textFormat.bold' } },
+    ] } });
+  }
+
+  // ---------- Changing a status from the dashboard ----------
+  const toast = (msg, bad) => {
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, bad ? 6000 : 2800);
+  };
+  // "Name | https://linkedin...; Name 2" <-> [{ name, url }]
+  const parseContacts = (v) => String(v || '').split(/;\s*/).map((x) => x.trim()).filter(Boolean).map((x) => { const [name, url] = x.split('|').map((y) => y.trim()); return { name: name || url, url: safeUrl(url) || '' }; });
+  const formatContacts = (list) => list.map((c) => (c.url ? `${c.name} | ${c.url}` : c.name)).join('; ');
+  async function setStatus(r, status, contacts) {
+    const before = { s: r['Status'], d: r['Date Applied'], q: r['Referral Contacts'], rd: r['Referral Requested On'] };
+    r['Status'] = status;
+    const started = ['Applied', 'Referral requested', 'Interviewing', 'Offer', 'On hold', 'Rejected'].includes(status);
+    if (started && !String(r['Date Applied'] || '').trim()) r['Date Applied'] = todayPT();
+    if (contacts) { r['Referral Contacts'] = formatContacts(contacts); r['Referral Requested On'] = todayPT(); }
+    render();
+    if (usingSample || !WS) { toast('Sample data: changes aren\u2019t saved'); return; }
+    if (!r.__row) { toast('Could not find this job in your tracker. Refresh and try again.', true); return; }
+    const tabName = WS.jobsTab || 'Jobs';
+    const data = [{ range: `'${tabName}'!N${r.__row}:O${r.__row}`, values: [[status, r['Date Applied'] || '']] }];
+    if (contacts) data.push({ range: `'${tabName}'!Q${r.__row}:R${r.__row}`, values: [[r['Referral Contacts'], r['Referral Requested On']]] });
+    try {
+      await api(SHEETS + WS.tracker + '/values:batchUpdate', { json: { valueInputOption: 'RAW', data } });
+      toast(`Saved: ${r['Company']} is now "${status}"`);
+    } catch (e) {
+      Object.assign(r, { 'Status': before.s, 'Date Applied': before.d, 'Referral Contacts': before.q, 'Referral Requested On': before.rd });
+      render();
+      toast('Could not save to your tracker: ' + e.message.slice(0, 120), true);
+    }
+  }
+  function statusSelect(r) {
+    const sel = el('select', 'status-select'); sel.setAttribute('aria-label', 'Status for ' + (r['Job Title'] || 'this job'));
+    const cur = statusOf(r);
+    for (const st of STATUSES.includes(cur) ? STATUSES : [...STATUSES, cur]) { const o = el('option', null, st); o.value = st; if (st === cur) o.selected = true; sel.append(o); }
+    sel.style.setProperty('--sc', sColor(cur));
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      if (v === 'Referral requested') { sel.value = cur; askReferral(r); return; }
+      setStatus(r, v);
+    });
+    return sel;
+  }
+  // Referral dialog: pick from the agents' drafts for this job, or add someone.
+  let refJob = null, refExtra = [];
+  function draftsFor(r) {
+    const co = String(r['Company'] || '').toLowerCase(), link = String(r['Job Link'] || ''), title = String(r['Job Title'] || '').toLowerCase();
+    return drafts.filter((d) => (link && d['Job Link'] === link) || (String(d['Company'] || '').toLowerCase() === co && String(d['Job Title'] || '').toLowerCase() === title));
+  }
+  function askReferral(r) {
+    refJob = r; refExtra = [];
+    $('ref-job').textContent = `${r['Job Title']} at ${r['Company']}. They'll be listed under Referral follow-ups with their LinkedIn profiles.`;
+    const already = parseContacts(r['Referral Contacts']).map((c) => c.name.toLowerCase());
+    const box = $('ref-pick'); box.replaceChildren();
+    const people = draftsFor(r);
+    if (!people.length) box.append(el('p', 'hint', 'No drafted contacts for this job yet. Add the person below.'));
+    for (const d of people) {
+      const lab = el('label', 'ref-opt'); const cb = el('input'); cb.type = 'checkbox';
+      cb.dataset.name = d['Person'] || ''; cb.dataset.url = safeUrl(d['Profile URL']) || '';
+      cb.checked = already.includes(String(d['Person'] || '').toLowerCase());
+      const txt = el('span'); txt.append(el('b', null, d['Person'] || 'Unknown'), el('small', null, [d['Person Title'], d['Relationship']].filter(Boolean).join(' · ')));
+      lab.append(cb, txt); box.append(lab);
+    }
+    for (const c of parseContacts(r['Referral Contacts'])) if (!people.some((d) => String(d['Person'] || '').toLowerCase() === c.name.toLowerCase())) addExtra(c, true);
+    $('ref-name').value = ''; $('ref-url').value = ''; $('ref-err').textContent = '';
+    $('ref-dialog').showModal();
+  }
+  function addExtra(c, checked) {
+    refExtra.push(c);
+    const lab = el('label', 'ref-opt'); const cb = el('input'); cb.type = 'checkbox'; cb.checked = checked !== false; cb.dataset.name = c.name; cb.dataset.url = c.url || '';
+    const txt = el('span'); txt.append(el('b', null, c.name), el('small', null, c.url ? c.url.replace(/^https:\/\/(www\.)?/, '') : 'No profile link'));
+    lab.append(cb, txt); $('ref-pick').querySelector('.hint')?.remove(); $('ref-pick').append(lab);
+  }
+  $('ref-add').addEventListener('click', () => {
+    const name = $('ref-name').value.trim(), raw = $('ref-url').value.trim();
+    const url = raw ? (liUrl(raw) || safeUrl(raw)) : '';
+    if (!name && !url) { $('ref-err').textContent = 'Enter a name or a LinkedIn profile link.'; return; }
+    if (raw && !url) { $('ref-err').textContent = 'That doesn\u2019t look like a full https:// link.'; return; }
+    addExtra({ name: name || nameFromProfileUrl(url) || 'LinkedIn contact', url });
+    $('ref-name').value = ''; $('ref-url').value = ''; $('ref-err').textContent = '';
+  });
+  $('ref-form').addEventListener('submit', (e) => {
+    if (e.submitter && e.submitter.value !== 'save') return;
+    const picked = [...$('ref-pick').querySelectorAll('input:checked')].map((cb) => ({ name: cb.dataset.name, url: cb.dataset.url }));
+    if (!picked.length) { e.preventDefault(); $('ref-err').textContent = 'Pick or add at least one person.'; return; }
+    setStatus(refJob, 'Referral requested', picked);
+  });
+
+  function renderRefs() {
+    const box = $('refs');
+    const list = jobs.filter((r) => statusOf(r) === 'Referral requested').sort((a, b) => String(a['Referral Requested On'] || '').localeCompare(String(b['Referral Requested On'] || '')));
+    if (!list.length) return emptyBox(box, 'No referral requests yet. When you ask someone, set the job\u2019s status to "Referral requested" and pick who you asked.', 'users');
+    box.replaceChildren();
+    for (const r of list) {
+      const card = el('div', 'ref');
+      const head = el('div', 'ref-head'); const t = el('div');
+      t.append(el('b', null, r['Company'] || '—'), el('small', null, r['Job Title'] || ''));
+      const on = String(r['Referral Requested On'] || '').slice(0, 10);
+      const days = /^\d{4}-\d{2}-\d{2}$/.test(on) ? Math.round((Date.parse(todayPT()) - Date.parse(on)) / 864e5) : null;
+      const age = el('span', 'ref-age' + (days >= 5 ? ' due' : ''), days === null ? 'Asked' : days >= 5 ? `Follow up · ${days}d` : days === 0 ? 'Asked today' : `Asked ${days}d ago`);
+      head.append(t, age);
+      const ppl = el('div', 'ref-people');
+      const contacts = parseContacts(r['Referral Contacts']);
+      if (!contacts.length) ppl.append(el('span', 'hint', 'No one listed'));
+      for (const c of contacts) {
+        const a = el(c.url ? 'a' : 'span', 'ref-person'); a.append(icon('users'), document.createTextNode(c.name));
+        if (c.url) { a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; a.title = 'Open LinkedIn profile'; }
+        ppl.append(a);
+      }
+      const row = el('div', 'ref-head'); row.append(statusSelect(r));
+      const edit = el('button', 'btn sm'); edit.type = 'button'; edit.append(icon('pen'), document.createTextNode('Edit people')); edit.addEventListener('click', () => askReferral(r));
+      row.append(edit);
+      card.append(head, ppl, row); box.append(card);
+    }
+  }
+
   function setUpdated(text) {
     const u = $('updated'); u.replaceChildren();
     if (text) { u.textContent = text; return; }
@@ -272,7 +402,14 @@
     clearInterval(timer);
     timer = setInterval(() => { if (!document.hidden) load(); }, C.AUTO_REFRESH_MINUTES * 60000);
   }
-  $('refresh').addEventListener('click', load);
+  $('refresh').addEventListener('click', async () => {
+    const b = $('refresh'); if (b.disabled) return;
+    b.disabled = true; b.classList.add('spin');
+    const ok = await load();
+    b.disabled = false; b.classList.remove('spin');
+    if (ok === true) toast(`Refreshed · ${fmt(jobs.length)} ${jobs.length === 1 ? 'job' : 'jobs'} from your tracker`);
+    else if (WS) toast('Could not refresh: ' + String(ok.message || ok).slice(0, 120), true);
+  });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && token && lastLoaded && Date.now() - lastLoaded > 60000) load(); });
 
   // ---------- Sample data (preview only, clearly bannered) ----------
@@ -324,7 +461,7 @@
     const n = {}; for (const r of jobs) { const s = statusOf(r); n[s] = (n[s] || 0) + 1; }
     const g = (k) => n[k] || 0;
     const statusCounts = [...STATUSES, ...Object.keys(n).filter((s) => !STATUSES.includes(s))].map((status) => ({ status, jobs: g(status) }));
-    const applied = g('Applied') + g('Referral requested') + g('Interviewing') + g('Offer') + g('Rejected');
+    const applied = g('Applied') + g('Referral requested') + g('Interviewing') + g('Offer') + g('On hold') + g('Rejected');
     const funnel = [
       { label: 'Prepared', value: jobs.length - g('Skipped'), color: 'var(--brand)' },
       { label: 'Applied', value: applied, color: 'var(--s-applied)' },
@@ -538,6 +675,7 @@
       const m2 = el('span'); m2.append(icon('pin'), document.createTextNode(r['Location'] || '—'));
       const m3 = el('span'); m3.append(icon('shield'), document.createTextNode(r['Sponsorship Signal'] || 'Not stated'));
       meta.append(m1, m2, m3); main.append(role, meta);
+      const qs = el('div', 'q-status'); qs.append(statusSelect(r)); main.append(qs);
       const acts = el('div', 'q-acts');
       acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'));
       acts.firstChild.classList.add('primary');
@@ -581,13 +719,20 @@
       co.append(av, document.createTextNode(r['Company'] || '—')); td(co);
       const role = el('div', 'role'); const u = safeUrl(r['Job Link']);
       const t = el(u ? 'a' : 'span', null, r['Job Title']); if (u) { t.href = u; t.target = '_blank'; t.rel = 'noopener'; }
-      role.append(t, el('small', null, [r['Location'], r['Source']].filter(Boolean).join(' · '))); td(role);
+      role.append(t, el('small', null, [r['Location'], r['Source']].filter(Boolean).join(' · ')));
+      const refs = parseContacts(r['Referral Contacts']);
+      if (refs.length) {
+        const line = el('div', 'ref-line'); line.append(document.createTextNode('Referral asked:'));
+        refs.forEach((c, i) => { const a = el(c.url ? 'a' : 'span', null, c.name + (i < refs.length - 1 ? ',' : '')); if (c.url) { a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; } line.append(a); });
+        role.append(line);
+      }
+      td(role);
       const scv = Number(r['Match Score']) || 0;
       const sc = el('span', 'score'); sc.style.setProperty('--sc', scoreColor(scv));
       const bar = el('span', 'bar'); const fill = el('span'); fill.style.width = Math.max(0, Math.min(100, scv)) + '%'; bar.append(fill);
       sc.append(document.createTextNode(r['Match Score'] || '—'), bar); td(sc);
       td(el('span', 'spons', r['Sponsorship Signal'] || '—'), 'hide-sm');
-      const pill = el('span', 'pill'); pill.style.setProperty('--sc', sColor(statusOf(r))); pill.append(el('i'), document.createTextNode(statusOf(r))); td(pill);
+      td(statusSelect(r));
       td(r['Date Found'] ? fmtDay(r['Date Found']) : '—', 'hide-sm nowrap');
       const acts = el('div', 'acts');
       acts.append(btn('Apply', r['Job Link'], 'external', 'var(--brand)'), btn('Resume', r['Tailored Resume Link'], 'file', 'var(--s-ready)'), btn('Outreach', r['Outreach Drafts Link'], 'message', 'var(--s-referral)'), btn('', r['Company Folder'], 'folder'));
@@ -661,6 +806,7 @@
     renderChips(D.statusCounts);
     renderJobs();
     renderRuns();
+    renderRefs();
     renderOutreachStatus();
     renderFind();
     renderAgentDrafts();
